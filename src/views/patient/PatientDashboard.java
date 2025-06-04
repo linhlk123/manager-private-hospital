@@ -11,22 +11,26 @@ import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import views.LoginForm;
-import views.patient.AppointmentForm;
 
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
+import menuPatient.Contact;
+import menuPatient.Notification;
+import menuPatient.PersonalInfo;
+import menuPatient.SecurityPolicy;
+import menuPatient.TermOfUse;
 
 
 public class PatientDashboard extends JFrame {
-    private String currentPatient;
+    private String currentPatient, patientId;
     private JPanel contentPanel;  // panel chứa các màn hình chức năng
     private CardLayout cardLayout;
+    private JPanel sideMenu; 
 
-    public PatientDashboard(String hoTen) {
+    public PatientDashboard(String hoTen, String maBN) throws SQLException, ClassNotFoundException {
         this.currentPatient = hoTen;
+        this.patientId = maBN;
+
+        System.out.println("Tên: " + hoTen);
+        System.out.println("Mã bệnh nhân: " + patientId);
 
         setTitle("Dashboard Bệnh nhân");
         setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -38,10 +42,11 @@ public class PatientDashboard extends JFrame {
         setLayout(new BorderLayout());
 
         // Thanh menu trái (ví dụ đơn giản)
-        JPanel sideMenu = new JPanel();
+        sideMenu = new JPanel();
         sideMenu.setPreferredSize(new Dimension(300, getHeight()));
         sideMenu.setBackground(new Color(0x2B4A59));
         sideMenu.setLayout(new BoxLayout(sideMenu, BoxLayout.Y_AXIS));
+
 
         sideMenu.add(Box.createVerticalStrut(20)); // thêm trước khi add menuLabel
 
@@ -76,26 +81,32 @@ public class PatientDashboard extends JFrame {
 
             // Hover effect
             lbl.addMouseListener(new MouseAdapter() {
-                Color normal = lbl.getForeground();
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    lbl.setForeground(new Color(0x1ABC9C));
-                }
+            Color normal = lbl.getForeground();
 
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    lbl.setForeground(normal);
-                }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                lbl.setForeground(new Color(0x1ABC9C));
+            }
 
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    System.out.println("Clicked menu trái: " + item);
-                    if(item.equals("Đăng xuất")){
-                        dispose(); // đóng frame
-                        // bạn có thể thêm logic chuyển về màn hình login ở đây
-                    }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                lbl.setForeground(normal);
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                System.out.println("Clicked menu trái: " + item);
+                if (item.equals("Đăng xuất")) {
+                    dispose();
+                } else {
+                    cardLayout.show(contentPanel, item);
+
+                    // Ẩn side menu nếu là "Hồ sơ cá nhân", hiện nếu là cái khác
+                    sideMenu.setVisible(!item.equals("Hồ sơ cá nhân") && !item.equals("Thông báo"));
+
                 }
-            });
+            }
+        });
 
             sideMenu.add(lbl);
             sideMenu.add(Box.createVerticalStrut(10));
@@ -107,9 +118,9 @@ public class PatientDashboard extends JFrame {
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
         contentPanel.setBackground(Color.WHITE);
+        
 
         // Tạo các panel chức năng tương ứng
-        contentPanel.add(createWelcomePanel(), "Welcome");
         contentPanel.add(createProfilePanel(), "Hồ sơ cá nhân");
         contentPanel.add(createNotificationPanel(), "Thông báo");
         contentPanel.add(createTermsPanel(), "Điều khoản sử dụng");
@@ -125,50 +136,43 @@ public class PatientDashboard extends JFrame {
         add(contentPanel, BorderLayout.CENTER);
     }
 
-    // Màn hình chào mừng (nếu muốn)
-    private JPanel createWelcomePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        JLabel welcomeLabel = new JLabel("Chào mừng bệnh nhân: " + currentPatient, SwingConstants.CENTER);
-        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        panel.add(welcomeLabel, BorderLayout.CENTER);
-        return panel;
-    }
 
     // Các màn hình demo chức năng khác
     private JPanel createProfilePanel() {
-        JPanel panel = new JPanel();
-        panel.setBackground(Color.WHITE);
-        panel.add(new JLabel("Màn hình Hồ sơ cá nhân"));
-        return panel;
+        PersonalInfo profilePanel = new PersonalInfo(patientId, () -> {
+            cardLayout.show(contentPanel, "MainFunctions");
+            sideMenu.setVisible(true); // <-- hiện lại menu khi bấm nút quay lại
+        });
+        return profilePanel;
     }
 
-    private JPanel createNotificationPanel() {
-        JPanel panel = new JPanel();
-        panel.setBackground(Color.WHITE);
-        panel.add(new JLabel("Màn hình Thông báo"));
-        return panel;
+    private JPanel createNotificationPanel() throws SQLException, ClassNotFoundException {
+        Notification noti = new Notification(patientId, () -> {
+            cardLayout.show(contentPanel, "MainFunctions");
+            sideMenu.setVisible(true); // <-- hiện lại menu khi bấm nút quay lại
+        });
+        return noti;
     }
 
     private JPanel createTermsPanel() {
-        JPanel panel = new JPanel();
-        panel.setBackground(Color.WHITE);
-        panel.add(new JLabel("Màn hình Điều khoản sử dụng"));
-        return panel;
+        TermOfUse termsPanel = new TermOfUse(() -> {
+            cardLayout.show(contentPanel, "MainFunctions");
+        });
+        return termsPanel;
     }
 
     private JPanel createSecurityPanel() {
-        JPanel panel = new JPanel();
-        panel.setBackground(Color.WHITE);
-        panel.add(new JLabel("Màn hình An toàn bảo mật"));
-        return panel;
+        SecurityPolicy SecurityPanel = new SecurityPolicy(() -> {
+            cardLayout.show(contentPanel, "MainFunctions");
+        });
+        return SecurityPanel;
     }
 
     private JPanel createContactPanel() {
-        JPanel panel = new JPanel();
-        panel.setBackground(Color.WHITE);
-        panel.add(new JLabel("Màn hình Liên hệ"));
-        return panel;
+        Contact ContactPanel = new Contact(() -> {
+            cardLayout.show(contentPanel, "MainFunctions");
+        });
+        return ContactPanel;
     }
 
     // Panel chính chứa các container chức năng như trước
@@ -182,10 +186,11 @@ public class PatientDashboard extends JFrame {
 
         // Các container chức năng
         wrapper.add(createFunctionContainer("Tra cứu thuốc", "src/views/patient/image/find.png"));
-        wrapper.add(createFunctionContainer("Đặt lịch hẹn", "src/views/patient/image/calendar.png"));
+        wrapper.add(createFunctionContainer("Lịch hẹn", "src/views/patient/image/calendar.png"));
         wrapper.add(createFunctionContainer("Lịch sử khám", "src/views/patient/image/history.png"));
         wrapper.add(createFunctionContainer("Mua thuốc", "src/views/patient/image/drug.png"));
         wrapper.add(createFunctionContainer("Dịch vụ khám", "src/views/patient/image/service.png"));
+        wrapper.add(createFunctionContainer("Thanh toán hóa đơn", "src/views/patient/image/bill.jpg"));
 
         centerPanel.add(wrapper);
 
@@ -238,57 +243,64 @@ public class PatientDashboard extends JFrame {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                handleMenuClick(title);
+                try {
+                    handleMenuClick(title);
+                } catch (SQLException | ClassNotFoundException ex) {
+                    Logger.getLogger(PatientDashboard.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         });
 
         return panel;
     }
 
-    private void handleMenuClick(String title) {
+    private void handleMenuClick(String title) throws SQLException, ClassNotFoundException {
         System.out.println("Bạn đã chọn: " + title);
-        
+
         // Chuyển sang panel tương ứng trong contentPanel
         switch (title) {
-            case "Hồ sơ cá nhân":
-                cardLayout.show(contentPanel, "Hồ sơ cá nhân");
-                break;
-            case "Thông báo":
-                cardLayout.show(contentPanel, "Thông báo");
-                break;
-            case "Điều khoản sử dụng":
-                cardLayout.show(contentPanel, "Điều khoản sử dụng");
-                break;
-            case "An toàn bảo mật":
-                cardLayout.show(contentPanel, "An toàn bảo mật");
-                break;
-            case "Liên hệ":
-                cardLayout.show(contentPanel, "Liên hệ");
-                break;
-            case "Đặt lịch hẹn":
-                new AppointmentForm("Princess").setVisible(true);
-                break;
-
-            case "Tra cứu thuốc":
-                cardLayout.show(contentPanel, "Tra cứu thuốc");
-                break;
-            case "Lịch sử khám":
-                cardLayout.show(contentPanel, "Lịch sử khám");
-                break;
-            case "Mua thuốc":
-                cardLayout.show(contentPanel, "Mua thuốc");
-                break;
-            case "Dịch vụ khám":
-                cardLayout.show(contentPanel, "Dịch vụ khám");
-                break;
-            default:
-                cardLayout.show(contentPanel, "MainFunctions");
+            case "Hồ sơ cá nhân" -> cardLayout.show(contentPanel, "Hồ sơ cá nhân");
+            case "Thông báo" -> cardLayout.show(contentPanel, "Thông báo");
+            case "Điều khoản sử dụng" -> cardLayout.show(contentPanel, "Điều khoản sử dụng");
+            case "An toàn bảo mật" -> cardLayout.show(contentPanel, "An toàn bảo mật");
+            case "Liên hệ" -> cardLayout.show(contentPanel, "Liên hệ");
+            case "Lịch hẹn" -> {
+                System.out.println(patientId);
+                new HistoryAppointment(patientId).setVisible(true);
+            }
+            case "Tra cứu thuốc" -> new ProductView().setVisible(true);
+            case "Lịch sử khám" -> {
+                System.out.println(patientId);
+                new HisMedExam(patientId).setVisible(true);
+            }
+            case "Mua thuốc" -> {
+                System.out.println(patientId);
+                new BuyMed(patientId).setVisible(true);
+            }
+            case "Dịch vụ khám" -> {
+                System.out.println(patientId);
+                new ServiceForm(patientId).setVisible(true);
+            }
+            case "Thanh toán hóa đơn" -> {
+                System.out.println(patientId);
+                new PayBill(patientId).setVisible(true);
+            }
+            default -> cardLayout.show(contentPanel, "MainFunctions");
         }
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new PatientDashboard("Nguyễn Văn A").setVisible(true);
+            try {
+                // Dữ liệu mẫu cho tên và mã bệnh nhân
+                String hoTen = "Nguyễn Ngọc Duy Bảo";
+                String maBN = "U002";
+
+                PatientDashboard dashboard = new PatientDashboard(hoTen, maBN);
+                dashboard.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         });
     }
 }

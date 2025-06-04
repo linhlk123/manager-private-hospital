@@ -13,6 +13,7 @@ import javax.swing.*;
 import java.sql.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import views.doctor.DoctorDashboard;
 
 
 public class LoginForm extends JFrame {
@@ -57,7 +58,7 @@ public class LoginForm extends JFrame {
         loginPanel.setBackground(new Color(255, 255, 255, 200)); // nền trắng hơi trong suốt (alpha=200)
         loginPanel.setBorder(BorderFactory.createEmptyBorder(40, 60, 40, 60));
 
-
+        
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 0, 10, 0);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -177,26 +178,6 @@ public class LoginForm extends JFrame {
         };
         return button;
     }
-   
-    
-//    public void showCustomMessageDialog(Component parent, String message) {
-//        // Đặt màu nền toàn cục cho JOptionPane
-//        UIManager.put("OptionPane.background", new Color(0xf4f7fb));
-//        UIManager.put("Panel.background", new Color(0xf4f7fb));
-//        UIManager.put("Button.background", new Color(0x588EA7));
-//        UIManager.put("Button.foreground", Color.WHITE);
-//        UIManager.put("OptionPane.messageForeground", Color.BLACK);
-//
-//        // Tạo JLabel có màu nền tùy chỉnh (không bắt buộc nếu dùng UIManager)
-//        JLabel label = new JLabel(message);
-//        label.setFont(new Font("Arial", Font.PLAIN, 14));
-//        label.setOpaque(true);
-//        label.setBackground(new Color(0xf4f7fb));
-//        label.setForeground(Color.BLACK);
-//
-//        JOptionPane.showMessageDialog(parent, label, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-//    }
-
 
     private void login() {
         String username = tfUsername.getText().trim();
@@ -212,6 +193,7 @@ public class LoginForm extends JFrame {
 
             if (rs.next()) {
                 String hoTen = rs.getString("HOTENND");
+                String userId = rs.getString("ID");
                 String role = rs.getString("ROLE");
                 
                 //showCustomMessageDialog(this, "Đăng nhập thành công với vai trò: " + role);
@@ -219,15 +201,16 @@ public class LoginForm extends JFrame {
                 switch (role) {
                     case "Bệnh nhân" -> { 
                         System.out.println("Opening interface of Patient...");
-                        new PatientDashboard(String.valueOf(hoTen)).setVisible(true);
+                        new PatientDashboard(String.valueOf(hoTen), userId).setVisible(true);
                     }
-                    case "Doctor" -> {
-                        // Gọi dashboard cho bác sĩ
+                    case "Bác sĩ" -> {
+                        System.out.println("Opening interface of Doctor...");
+                        new DoctorDashboard(String.valueOf(hoTen), userId).setVisible(true);
                     }
-                    case "Pharmacist" -> {
+                    case "Dược sĩ" -> {
                         // Gọi dashboard cho dược sĩ
                     }
-                    case "Staff" -> {
+                    case "Nhân viên" -> {
                         // Gọi dashboard cho nhân viên
                     }
                     default -> {
@@ -245,22 +228,4 @@ public class LoginForm extends JFrame {
             JOptionPane.showMessageDialog(this, "Lỗi khi đăng nhập!");
         }
     }
-    
-      public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new LoginForm().setVisible(true);
-        });
-    }
 }
-
-
-
-
-
-
-
-
-
-
-
-

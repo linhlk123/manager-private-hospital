@@ -7,7 +7,10 @@ package views.patient;
 import utils.DBConnection;
 import javax.swing.*;
 import java.awt.*;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
 
 public class AppointmentForm extends JFrame {
     private JComboBox<String> doctorComboBox;
@@ -15,6 +18,7 @@ public class AppointmentForm extends JFrame {
     private JTextField txtDiadiem;
     private JTextArea txtTrieuchung;
     private JButton btnSubmit;
+    private String patientId;
 
     public class ImagePanel extends JPanel {
         private Image backgroundImage;
@@ -32,13 +36,14 @@ public class AppointmentForm extends JFrame {
     }
 
     public AppointmentForm(String patientId) {
+        this.patientId = patientId;
+        
         setTitle("Đặt lịch khám bệnh");
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         // Co theo kích thước màn hình (đề xuất)
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screenSize.width, screenSize.height); // full màn hình
-        setLocationRelativeTo(null); // canh giữa
         setLayout(new BorderLayout());
 
         // Set background
@@ -58,7 +63,7 @@ public class AppointmentForm extends JFrame {
         formPanel.setOpaque(false);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(20, 10, 20, 10);
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
@@ -67,8 +72,9 @@ public class AppointmentForm extends JFrame {
         // Bác sĩ
         gbc.gridx = 0;
         gbc.gridy = 0;
-        JLabel lblDoctor = new JLabel("👨‍⚕️ Bác sĩ:");
+        JLabel lblDoctor = new JLabel("Bác sĩ:");
         lblDoctor.setForeground(Color.BLACK);
+        lblDoctor.setFont(new Font("Segoe UI", Font.BOLD, 20));
         formPanel.add(lblDoctor, gbc);
         gbc.gridx = 1;
         doctorComboBox = new JComboBox<>();
@@ -81,8 +87,9 @@ public class AppointmentForm extends JFrame {
         // Ngày hẹn
         gbc.gridx = 0;
         gbc.gridy++;
-        JLabel lblDate = new JLabel("📅 Ngày hẹn (yyyy-MM-dd):");
+        JLabel lblDate = new JLabel("Ngày hẹn (yyyy-MM-dd HH:mm:ss):");
         lblDate.setForeground(Color.BLACK);
+        lblDate.setFont(new Font("Segoe UI", Font.BOLD, 20));
         formPanel.add(lblDate, gbc);
         gbc.gridx = 1;
         txtNgayHen = new JTextField();
@@ -93,11 +100,12 @@ public class AppointmentForm extends JFrame {
         // Địa điểm
         gbc.gridx = 0;
         gbc.gridy++;
-        JLabel lblLocation = new JLabel("🏥 Địa điểm khám:");
+        JLabel lblLocation = new JLabel("Địa điểm khám:");
         lblLocation.setForeground(Color.BLACK);
+        lblLocation.setFont(new Font("Segoe UI", Font.BOLD, 20));
         formPanel.add(lblLocation, gbc);
         gbc.gridx = 1;
-        txtDiadiem = new JTextField("Offline");
+        txtDiadiem = new JTextField();
         txtDiadiem.setFont(inputFont);
         txtDiadiem.setBackground(new Color(0xd9eef2));
         formPanel.add(txtDiadiem, gbc);
@@ -105,8 +113,9 @@ public class AppointmentForm extends JFrame {
         // Triệu chứng
         gbc.gridx = 0;
         gbc.gridy++;
-        JLabel lblSymptoms = new JLabel("🤒 Triệu chứng:");
+        JLabel lblSymptoms = new JLabel("Triệu chứng:");
         lblSymptoms.setForeground(Color.BLACK);
+        lblSymptoms.setFont(new Font("Segoe UI", Font.BOLD, 20));
         formPanel.add(lblSymptoms, gbc);
         gbc.gridx = 1;
         txtTrieuchung = new JTextArea(4, 20);
@@ -134,6 +143,19 @@ public class AppointmentForm extends JFrame {
         btnSubmit.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnSubmit.setPreferredSize(new Dimension(120, 35));
         btnSubmit.addActionListener(e -> datLich(patientId));
+        
+        btnSubmit.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnSubmit.setBackground(new Color(0xff9800)); 
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnSubmit.setBackground(new Color(0x588EA7));
+            }
+        });
+
         formPanel.add(btnSubmit, gbc);
 
         add(formPanel, BorderLayout.CENTER);
@@ -152,6 +174,45 @@ public class AppointmentForm extends JFrame {
             JOptionPane.showMessageDialog(this, "Lỗi tải bác sĩ: " + e.getMessage());
         }
     }
+    
+    private String generateAppointmentId(Connection conn) {
+        String prefix = "LH";
+        String sql = "SELECT MAX(MALICH) FROM LICHHEN";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                String lastId = rs.getString(1);
+                if (lastId != null) {
+                    int num = Integer.parseInt(lastId.replace(prefix, ""));
+                    return prefix + String.format("%03d", num + 1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return prefix + "001"; // Nếu chưa có lịch hẹn nào
+    }
+    
+    private String generateNotificationId(Connection conn){
+         String prefix = "TB";
+        String sql = "SELECT MAX(MATB) FROM THONGBAO";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                String lastId = rs.getString(1);
+                if (lastId != null) {
+                    int num = Integer.parseInt(lastId.replace(prefix, ""));
+                    return prefix + String.format("%03d", num + 1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return prefix + "001"; // Nếu chưa có lịch hẹn nào
+    }
+
 
     private void datLich(String patientId) {
         if (doctorComboBox.getSelectedItem() == null || txtNgayHen.getText().isEmpty() || txtDiadiem.getText().isEmpty()) {
@@ -159,11 +220,11 @@ public class AppointmentForm extends JFrame {
             return;
         }
 
-        java.sql.Date ngayHen;
+        java.sql.Timestamp ngayHen;
         try {
-            ngayHen = java.sql.Date.valueOf(txtNgayHen.getText());
+            ngayHen = java.sql.Timestamp.valueOf(txtNgayHen.getText());
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, "Ngày không hợp lệ! Định dạng: yyyy-MM-dd");
+            JOptionPane.showMessageDialog(this, "Ngày không hợp lệ! Định dạng: yyyy-MM-dd HH:mm:ss");
             return;
         }
 
@@ -172,19 +233,28 @@ public class AppointmentForm extends JFrame {
         String trieuchung = txtTrieuchung.getText();
 
         try (Connection conn = DBConnection.getConnection()) {
-            String malich = "LH" + System.currentTimeMillis() % 100000;
+            String malich = generateAppointmentId(conn);
             String sql = "INSERT INTO LICHHEN (MALICH, MABN, MABS, NGAYHEN, DIADIEM, TRIEUCHUNG, TRANGTHAI) " +
                          "VALUES (?, ?, ?, ?, ?, ?, 'Chờ xác nhận')";
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setString(1, malich);
             ps.setString(2, patientId);
             ps.setString(3, doctorId);
-            ps.setDate(4, ngayHen);
+            ps.setTimestamp(4, ngayHen);
             ps.setString(5, diadiem);
             ps.setString(6, trieuchung);
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
+                String noidung = "Bạn đã đặt lịch hẹn thành công vào ngày " + ngayHen.toLocalDateTime().toString().replace("T", " ") + ". Vui lòng chờ xác nhận.";
+                String sqlTB = "INSERT INTO THONGBAO (MATB, USER_ID, NOIDUNG, LOAI) VALUES (?, ?, ?, ?)";
+                PreparedStatement psTB = conn.prepareStatement(sqlTB);
+                psTB.setString(1, generateNotificationId(conn)); // Hàm tự viết để sinh ID
+                psTB.setString(2, patientId);
+                psTB.setString(3, noidung);
+                psTB.setString(4, "Lịch hẹn");
+                psTB.executeUpdate();
+                
                 JOptionPane.showMessageDialog(this, "Đặt lịch thành công!");
                 dispose();
             } else {
@@ -195,10 +265,9 @@ public class AppointmentForm extends JFrame {
         }
     }
 
-//    public static void main(String[] args) {
-//        SwingUtilities.invokeLater(() -> {
-//            new AppointmentForm("BN001").setVisible(true);
-//        });
-//    }
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new AppointmentForm("U002").setVisible(true);
+        });
+    }
 }
-

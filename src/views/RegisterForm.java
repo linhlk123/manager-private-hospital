@@ -166,7 +166,7 @@ public class RegisterForm extends JFrame {
 
 
         Color loginColor = new Color(0x588EA7);
-        Color registerColor = new Color(0x2b4a59);
+        Color registerColor = new Color(0x2B4A59);
         Color hoverColor = new Color(0xff9800);
 
         // Tạo nút với hiệu ứng màu

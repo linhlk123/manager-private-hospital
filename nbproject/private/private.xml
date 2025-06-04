@@ -4,16 +4,37 @@
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
             <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/utils/HashUtil.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/AppointmentForm.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/dao/ProductDAO.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/main/ManagerPrivateHospital.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/ProductView.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/models/Product.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/utils/DBConnection.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/dao/AppointmentDAO.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/HisMedExam.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/HistoryAppointmentJFrame.java</file>
             <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/RegisterForm.java</file>
             <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/LoginForm.java</file>
-            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/BackgroundLogin.png</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/menuPatient/Notification.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/PayBill.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/ProductView.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/HisMedExamDoc.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/Bill.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/Prescription.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/menuPatient/PersonalInfo.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/AppointmentForm.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/BaoCao.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/CreateBill.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/menuDoctor/PersonalProfile.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/models/Product.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/utils/DBConnection.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/menuPatient/Contact.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/PrescriptionDoc.java</file>
             <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/PatientDashboard.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/ProfilePatient.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/HisAppointDoc.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/HistoryAppointment.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/dao/ProductDAO.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/BuyMed.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/main/ManagerPrivateHospital.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/menuPatient/TermOfUse.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/patient/ServiceForm.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/views/doctor/DoctorDashboard.java</file>
+            <file>file:/C:/Users/hanpr/Documents/NetBeansProjects/ManagerPrivateHospital/src/menuPatient/SecurityPolicy.java</file>
         </group>
     </open-files>
 </project-private>
