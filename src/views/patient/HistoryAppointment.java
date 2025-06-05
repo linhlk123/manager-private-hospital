@@ -65,7 +65,7 @@ public class HistoryAppointment extends JFrame {
 
         try (Connection conn = DBConnection.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, patientId.trim()); // đảm bảo không có khoảng trắng
+            ps.setString(1, patientId.trim()); 
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -268,8 +268,8 @@ public class HistoryAppointment extends JFrame {
         List<String[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT * FROM LICHHEN WHERE MABN = ?");
         List<String> params = new ArrayList<>();
-        params.add(patientId.trim()); // loại bỏ khoảng trắng
-
+        params.add(patientId.trim());
+        
         if (!keyword.isEmpty()) {
             sql.append(" AND (LOWER(MALICH) LIKE ? OR LOWER(MABS) LIKE ? OR LOWER(NGAYDAT) LIKE ? OR LOWER(NGAYHEN) LIKE ? OR LOWER(DIADIEM) LIKE ? OR LOWER(TRIEUCHUNG) LIKE ?)");
             for (int i = 0; i < 6; i++) params.add("%" + keyword.toLowerCase() + "%");

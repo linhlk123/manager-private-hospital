@@ -60,33 +60,33 @@ public class HisAppointDoc extends JFrame {
     private List<String[]> getAppointmentsByStatus(String statusCondition) throws SQLException, ClassNotFoundException {
         List<String[]> result = new ArrayList<>();
 
-        String sqlBase = "SELECT * FROM LICHHEN WHERE TRANGTHAI ";
-        String sql = sqlBase + statusCondition;
+        String sql = "SELECT * FROM LICHHEN WHERE MABS = ? AND TRANGTHAI " + statusCondition;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, doctorId.trim());
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String[] row = {
+                        rs.getString("MALICH"),
+                        rs.getString("MABN"),
+                        rs.getString("MABS"),
+                        rs.getString("NGAYDAT"),
+                        rs.getString("NGAYHEN"),
+                        rs.getString("DIADIEM"),
+                        rs.getString("TRIEUCHUNG"),
+                        rs.getString("TRANGTHAI")
+                    };
 
-            while (rs.next()) {
-                String[] row = {
-                    rs.getString("MALICH"),
-                    rs.getString("MABN"),
-                    rs.getString("MABS"),
-                    rs.getString("NGAYDAT"),
-                    rs.getString("NGAYHEN"),
-                    rs.getString("DIADIEM"),
-                    rs.getString("TRIEUCHUNG"),
-                    rs.getString("TRANGTHAI")
-                };
-
-                result.add(row);
+                    result.add(row);
+                }
             }
-
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(null, "Lỗi truy vấn lịch hẹn: " + e.getMessage());
         }
 
-        return result;
+        return result; 
     }
 
 
@@ -120,8 +120,8 @@ public class HisAppointDoc extends JFrame {
         keywordField.setFont(new Font("Arial", Font.PLAIN, 14));
         JTextField ngayHenField = new JTextField(10);
         ngayHenField.setFont(new Font("Arial", Font.PLAIN, 14));
-        JTextField mabsField = new JTextField(10);
-        mabsField.setFont(new Font("Arial", Font.PLAIN, 14));
+        JTextField mabnField = new JTextField(10);
+        mabnField.setFont(new Font("Arial", Font.PLAIN, 14));
 
         String[] trangThaiOptions = {"Tất cả", "Chờ xác nhận", "Thành công", "Đã hủy", "Bị từ chối"};
         JComboBox<String> trangThaiBox = new JComboBox<>(trangThaiOptions);
@@ -173,12 +173,12 @@ public class HisAppointDoc extends JFrame {
         searchButton.addActionListener(e -> {
             String keyword = keywordField.getText().trim();
             String ngayHen = ngayHenField.getText().trim();
-            String mabs = mabsField.getText().trim();
+            String mabn = mabnField.getText().trim();
             String trangThai = trangThaiBox.getSelectedItem().toString();
             
 
             try {
-                List<String[]> result = searchAdvancedAppointments(keyword, ngayHen, mabs, trangThai);
+                List<String[]> result = searchAdvancedAppointments(doctorId, keyword, ngayHen, mabn, trangThai);
 
                 content.removeAll();
                 content.add(searchPanel);
@@ -220,11 +220,11 @@ public class HisAppointDoc extends JFrame {
 
         gbc.gridx = 3; searchPanel.add(ngayHenField, gbc);
 
-        JLabel maBSLabel = new JLabel("Mã bác sĩ:");
-        maBSLabel.setFont(labelFont);
-        gbc.gridx = 4; searchPanel.add(maBSLabel, gbc);
+        JLabel maBNLabel = new JLabel("Mã bệnh nhân:");
+        maBNLabel.setFont(labelFont);
+        gbc.gridx = 4; searchPanel.add(maBNLabel, gbc);
 
-        gbc.gridx = 5; searchPanel.add(mabsField, gbc);
+        gbc.gridx = 5; searchPanel.add(mabnField, gbc);
 
         JLabel trangThaiLabel = new JLabel("Trạng thái:");
         trangThaiLabel.setFont(labelFont);
@@ -262,14 +262,15 @@ public class HisAppointDoc extends JFrame {
         return panel;
     }
     
-    private List<String[]> searchAdvancedAppointments(String keyword, String ngayHen, String mabs, String trangThai)
+    private List<String[]> searchAdvancedAppointments(String doctorId, String keyword, String ngayHen, String mabn, String trangThai)
         throws SQLException, ClassNotFoundException {
         List<String[]> result = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT * FROM LICHHEN WHERE 1=1");
+        StringBuilder sql = new StringBuilder("SELECT * FROM LICHHEN WHERE MABS = ?");
         List<String> params = new ArrayList<>();
-
+        params.add(doctorId.trim());
+        
         if (!keyword.isEmpty()) {
-            sql.append(" AND (LOWER(MALICH) LIKE ? OR LOWER(MABS) LIKE ? OR LOWER(NGAYDAT) LIKE ? OR LOWER(NGAYHEN) LIKE ? OR LOWER(DIADIEM) LIKE ? OR LOWER(TRIEUCHUNG) LIKE ?)");
+            sql.append(" AND (LOWER(MALICH) LIKE ? OR LOWER(MABN) LIKE ? OR LOWER(NGAYDAT) LIKE ? OR LOWER(NGAYHEN) LIKE ? OR LOWER(DIADIEM) LIKE ? OR LOWER(TRIEUCHUNG) LIKE ?)");
             for (int i = 0; i < 6; i++) params.add("%" + keyword.toLowerCase() + "%");
         }
 
@@ -278,15 +279,18 @@ public class HisAppointDoc extends JFrame {
             params.add(ngayHen); // định dạng yyyy-MM-dd
         }
 
-        if (!mabs.isEmpty()) {
-            sql.append(" AND LOWER(MABS) LIKE ?");
-            params.add("%" + mabs.toLowerCase() + "%");
+        if (!mabn.isEmpty()) {
+            sql.append(" AND LOWER(MABN) LIKE ?");
+            params.add("%" + mabn.toLowerCase() + "%");
         }
 
         if (!trangThai.equals("Tất cả")) {
             sql.append(" AND TRANGTHAI = ?");
             params.add(trangThai);
         }
+        
+        System.out.println("SQL : " + sql);
+        System.out.println("Params : " + params);
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -332,7 +336,7 @@ public class HisAppointDoc extends JFrame {
     private void updateAppointmentStatus(String id, String newStatus) {
         String sql = "UPDATE LICHHEN SET TRANGTHAI = ? WHERE MALICH = ?";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newStatus);
             ps.setString(2, id);
             ps.executeUpdate();
@@ -349,101 +353,6 @@ public class HisAppointDoc extends JFrame {
         revalidate();
         repaint();
     }
-
-    
-//    private void showUpdateForm(String id, String ngayHen, String diaDiem, String trieuChung) {
-//        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Cập nhật lịch hẹn", true);
-//        dialog.setSize(350, 200);
-//        dialog.setLocationRelativeTo(this);
-//
-//        JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
-//        contentPanel.setBackground(new Color(0xd9eef2)); // Nền hộp thoại
-//        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-//
-//        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10));
-//        inputPanel.setOpaque(false); // để thấy màu nền từ contentPanel
-//
-//        JTextField ngayHenField = new JTextField(ngayHen);
-//        JTextField diaDiemField = new JTextField(diaDiem);
-//        JTextField trieuChungField = new JTextField(trieuChung);
-//
-//        inputPanel.add(new JLabel("Ngày hẹn mới:"));
-//        inputPanel.add(ngayHenField);
-//        inputPanel.add(new JLabel("Địa điểm mới:"));
-//        inputPanel.add(diaDiemField);
-//        inputPanel.add(new JLabel("Triệu chứng mới:"));
-//        inputPanel.add(trieuChungField);
-//
-//        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-//        buttonPanel.setOpaque(false);
-//
-//        JButton saveBtn = new JButton("Lưu");
-//        saveBtn.setBackground(new Color(0x2B4A59));
-//        saveBtn.setForeground(Color.WHITE);
-//        saveBtn.addActionListener(e -> {
-//            try {
-//                updateAppointmentInfo(id, ngayHenField.getText(), diaDiemField.getText(), trieuChungField.getText());
-//            } catch (ParseException ex) {
-//                Logger.getLogger(HisAppointDoc.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//            dialog.dispose();
-//            reloadAppointmentPanels();
-//        });
-//        
-//        saveBtn.addMouseListener(new java.awt.event.MouseAdapter() {
-//            public void mouseEntered(java.awt.event.MouseEvent evt) {
-//                saveBtn.setBackground(new Color(0xff9800));
-//            }
-//
-//            public void mouseExited(java.awt.event.MouseEvent evt) {
-//                saveBtn.setBackground(new Color(0x2B4A59));
-//            }
-//        });
-//
-//        JButton cancelBtn = new JButton("Hủy");
-//        cancelBtn.setBackground(new Color(0x2B4A59));
-//        cancelBtn.setForeground(Color.WHITE);
-//        cancelBtn.addActionListener(e -> dialog.dispose());
-//        
-//        cancelBtn.addMouseListener(new java.awt.event.MouseAdapter() {
-//            public void mouseEntered(java.awt.event.MouseEvent evt) {
-//                saveBtn.setBackground(new Color(0xff9800));
-//            }
-//
-//            public void mouseExited(java.awt.event.MouseEvent evt) {
-//                saveBtn.setBackground(new Color(0x2B4A59));
-//            }
-//        });
-//
-//        buttonPanel.add(saveBtn);
-//        buttonPanel.add(cancelBtn);
-//
-//        contentPanel.add(inputPanel, BorderLayout.CENTER);
-//        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
-//
-//        dialog.setContentPane(contentPanel);
-//        dialog.setVisible(true);
-//    }
-//
-//
-//    private void updateAppointmentInfo(String id, String ngayHen, String diaDiem, String trieuChung) throws ParseException {
-//        String sql = "UPDATE LICHHEN SET NGAYHEN = ?, DIADIEM = ?, TRIEUCHUNG = ? WHERE MALICH = ?";
-//        try (Connection conn = DBConnection.getConnection();
-//            PreparedStatement ps = conn.prepareStatement(sql)) {
-//            
-//            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//            java.util.Date parsed = sdf.parse(ngayHen);
-//            java.sql.Timestamp sqlDate = new java.sql.Timestamp(parsed.getTime());
-//        
-//            ps.setTimestamp(1, sqlDate);
-//            ps.setString(2, diaDiem);
-//            ps.setString(3, trieuChung);
-//            ps.setString(4, id);
-//            ps.executeUpdate();
-//        } catch (SQLException | ClassNotFoundException e) {
-//            JOptionPane.showMessageDialog(this, "Lỗi cập nhật thông tin lịch hẹn: " + e.getMessage());
-//        }
-//    }
     
     private void deleteAppointment(String id) {
         String sql = "DELETE FROM LICHHEN WHERE MALICH = ?";
@@ -521,20 +430,6 @@ public class HisAppointDoc extends JFrame {
                 reloadAppointmentPanels();
             });
 
-//            JButton updateButton = new JButton("Cập nhật");
-//            updateButton.setBackground(new Color(0xff9800)); // màu cam
-//            updateButton.setForeground(Color.WHITE);
-//            updateButton.addActionListener(e -> {
-//                dialog.dispose();
-//                showUpdateForm(
-//                    table.getValueAt(row, 0).toString(), // MALICH
-//                    table.getValueAt(row, 4).toString(), // NGAYHEN
-//                    table.getValueAt(row, 5).toString(), // DIADIEM
-//                    table.getValueAt(row, 6).toString()  // TRIEUCHUNG
-//                );
-//            });
-
-            //buttonPanel.add(updateButton);
             buttonPanel.add(confirmButton);
             buttonPanel.add(cancelButton);
         } else if (isDeletable) {
@@ -585,33 +480,33 @@ public class HisAppointDoc extends JFrame {
         //sectionTitle.setBorder(new EmptyBorder(10, 0, 10, 0));
         headerPanel.add(sectionTitle, BorderLayout.WEST);
         
-        if (title.equals("Lịch hẹn chờ xác nhận")) {
-            JButton btnDatLich = new JButton("Đặt lịch hẹn");
-            btnDatLich.setBackground(new Color(0xff9800)); 
-            btnDatLich.setForeground(Color.WHITE);
-            btnDatLich.setFont(new Font("Arial", Font.BOLD, 20));
-            btnDatLich.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            btnDatLich.setFocusPainted(false);
-
-            btnDatLich.addMouseListener(new MouseAdapter() {
-                public void mouseEntered(MouseEvent e) {
-                    btnDatLich.setBackground(new Color(0x588EA7)); 
-                }
-
-                public void mouseExited(MouseEvent e) {
-                    btnDatLich.setBackground(new Color(0xff9800));
-                }
-            });
-
+//        if (title.equals("Lịch hẹn chờ xác nhận")) {
+//            JButton btnDatLich = new JButton("Đặt lịch hẹn");
+//            btnDatLich.setBackground(new Color(0xff9800)); 
+//            btnDatLich.setForeground(Color.WHITE);
+//            btnDatLich.setFont(new Font("Arial", Font.BOLD, 20));
+//            btnDatLich.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+//            btnDatLich.setFocusPainted(false);
+//
+//            btnDatLich.addMouseListener(new MouseAdapter() {
+//                public void mouseEntered(MouseEvent e) {
+//                    btnDatLich.setBackground(new Color(0x588EA7)); 
+//                }
+//
+//                public void mouseExited(MouseEvent e) {
+//                    btnDatLich.setBackground(new Color(0xff9800));
+//                }
+//            });
+//
 //            btnDatLich.addActionListener(e -> {
 //                new AppointmentForm(doctorId).setVisible(true);
 //            });
-
-            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-            buttonPanel.setOpaque(false);
-            buttonPanel.add(btnDatLich);
-            headerPanel.add(buttonPanel, BorderLayout.EAST);
-        }
+//
+//            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+//            buttonPanel.setOpaque(false);
+//            buttonPanel.add(btnDatLich);
+//            headerPanel.add(buttonPanel, BorderLayout.EAST);
+//        }
         
         section.add(headerPanel, BorderLayout.NORTH);
 

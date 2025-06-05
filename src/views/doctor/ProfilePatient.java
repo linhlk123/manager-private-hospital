@@ -35,7 +35,7 @@ public class ProfilePatient extends JFrame {
         setSize(screenSize.width, screenSize.height); // full màn hình
      
         initComponents();
-        loadService();
+        loadProfilePatient();
     }
     
     private JPanel createLabeledField(String labelText, JTextField textField, Font font, Color color) {
@@ -160,7 +160,7 @@ public class ProfilePatient extends JFrame {
         // ===== SỰ KIỆN TÌM KIẾM =====
         btnSearch.addActionListener(e -> {
             try {
-                loadService(); // Gọi đúng hàm đang dùng tất cả các JTextField để lọc
+                loadProfilePatient(); // Gọi đúng hàm đang dùng tất cả các JTextField để lọc
             } catch (SQLException | ClassNotFoundException ex) {
                 Logger.getLogger(ProfilePatient.class.getName()).log(Level.SEVERE, null, ex);
                 JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm dịch vụ.");
@@ -180,11 +180,14 @@ public class ProfilePatient extends JFrame {
         });
     }
 
-    private void loadService() throws SQLException, ClassNotFoundException {
+    private void loadProfilePatient() throws SQLException, ClassNotFoundException {
         model.setRowCount(0);
-        StringBuilder sql = new StringBuilder("SELECT * FROM USERS U JOIN BENHNHAN B ON U.ID=B.MABN WHERE 1=1");
+        StringBuilder sql = new StringBuilder("SELECT DISTINCT B.MABN, U.HOTENND, U.SDT, U.EMAIL, U.GIOITINH, U.NGAYSINH, U.DIACHI, "
+                                            + "B.SOBHYT, B.LICHSU_BENHLY, B.DIUNG, B.NHOMMAU FROM USERS U "
+                                            + "JOIN BENHNHAN B ON U.ID=B.MABN "
+                                            + "JOIN KHAM K ON B.MABN = K.MABN WHERE MABS = ?");
         java.util.List<Object> params = new java.util.ArrayList<>();
-
+        params.add(doctorId.trim());
         
         if (!tfMaBN.getText().trim().isEmpty()) {
             sql.append(" AND UPPER(MABN) LIKE ?");

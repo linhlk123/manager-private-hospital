@@ -169,7 +169,7 @@ public class Prescription extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 int selectedRow = prescriptionTable.getSelectedRow();
                 if (selectedRow != -1) {
-                    showServiceDetails(selectedRow);
+                    showPrescriptionDetails(selectedRow);
                 }
             }
         });
@@ -241,7 +241,7 @@ public class Prescription extends JFrame {
     }
 
     
-    private void showServiceDetails(int row) {
+    private void showPrescriptionDetails(int row) {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi tiết đơn thuốc", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
@@ -281,6 +281,19 @@ public class Prescription extends JFrame {
             }
         }
         
+        try {
+            Connection conn = DBConnection.getConnection();
+            Statement stmt = conn.createStatement();
+            String maDT = model.getValueAt(row, 0).toString(); // MADT
+                ResultSet rs = stmt.executeQuery("SELECT * FROM CTDT WHERE MADT = '" + maDT + "'");
+                doc.insertString(doc.getLength(), "\n--- Chi tiết đơn thuốc ---\n", boldAttr);
+                while (rs.next()) {
+                    doc.insertString(doc.getLength(), "Sản phẩm: " + rs.getString("MASP") + ", SL: " + rs.getInt("SOLUONG") + ", Đơn giá: " + rs.getDouble("DONGIA") + ", Thành tiền: " + rs.getDouble("THANHTIEN") + "\n", normalAttr);
+                }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        
         textPane.setCaretPosition(0); // Đặt con trỏ về đầu => không cuộn xuống cuối
 
         JButton closeButton = new JButton("Đóng");
@@ -297,7 +310,7 @@ public class Prescription extends JFrame {
         contentPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         dialog.setContentPane(contentPanel);
-        dialog.setSize(400, 300);
+        dialog.setSize(450, 350);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }

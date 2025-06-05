@@ -132,8 +132,8 @@ public class PrescriptionDoc extends JFrame {
         add(topPanel, BorderLayout.NORTH); 
 
         // ===== TABLE: DANH SÁCH ĐƠN THUỐC =====
-        String[] columns = {"Mã đơn thuốc", "Mã dược sĩ", "Mã bác sĩ", "Mã bệnh nhân", "File Đơn Thuốc", 
-                            "Nội dung đơn thuốc", "Ghi chú", "Ngày bán", "Thành tiền", "Trạng thái thanh toán"};
+        String[] columns = {"Mã đơn thuốc", "Mã dược sĩ", "Mã bác sĩ", "Mã bệnh nhân", "Giới tính bệnh nhân", "Lịch sử bệnh lý bệnh nhân", 
+                            "Dị ứng bệnh nhân", "File Đơn Thuốc", "Ghi chú", "Ngày bán", "Thành tiền", "Trạng thái thanh toán"};
         
         model = new DefaultTableModel(columns, 0);
         prescriptionTable = new JTable(model);
@@ -223,8 +223,11 @@ public class PrescriptionDoc extends JFrame {
                     rs.getString("MADS"),
                     rs.getString("MABS"),
                     rs.getString("MABN"),
+                    rs.getString("GIOITINHBN"),
+                    rs.getString("NGAYSINHBN"),
+                    rs.getString("LICHSU_BENHLY_BN"),
+                    rs.getString("DIUNGBN"),
                     rs.getBlob("FILEDONTHUOC"),
-                    rs.getString("NOIDUNGDT"),
                     rs.getString("GHICHU"),
                     rs.getString("NGAYBAN"),
                     rs.getString("THANHTIEN"),
@@ -245,7 +248,7 @@ public class PrescriptionDoc extends JFrame {
         JPanel contentPanel = new JPanel();
         contentPanel.setBackground(new Color(0xd9eef2)); // Nền hộp thoại
         contentPanel.setLayout(new BorderLayout(10, 10));
-        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(10, 10 , 10, 10));
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < model.getColumnCount(); i++) {
@@ -278,6 +281,19 @@ public class PrescriptionDoc extends JFrame {
             }
         }
         
+        try {
+            Connection conn = DBConnection.getConnection();
+            Statement stmt = conn.createStatement();
+            String maDT = model.getValueAt(row, 0).toString(); // MADT
+                ResultSet rs = stmt.executeQuery("SELECT * FROM CTDT WHERE MADT = '" + maDT + "'");
+                doc.insertString(doc.getLength(), "\n--- Chi tiết đơn thuốc ---\n", boldAttr);
+                while (rs.next()) {
+                    doc.insertString(doc.getLength(), "Sản phẩm: " + rs.getString("MASP") + ", SL: " + rs.getInt("SOLUONG") + ", Đơn giá: " + rs.getDouble("DONGIA") + ", Thành tiền: " + rs.getDouble("THANHTIEN") + "\n", normalAttr);
+                }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        
         textPane.setCaretPosition(0); // Đặt con trỏ về đầu => không cuộn xuống cuối
 
         JButton closeButton = new JButton("Đóng");
@@ -294,7 +310,7 @@ public class PrescriptionDoc extends JFrame {
         contentPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         dialog.setContentPane(contentPanel);
-        dialog.setSize(400, 300);
+        dialog.setSize(450, 350);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }

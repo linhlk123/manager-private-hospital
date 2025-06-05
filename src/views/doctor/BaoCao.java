@@ -12,6 +12,8 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -30,7 +32,7 @@ public class BaoCao extends JFrame {
     private JLabel khamBenhLabel, lichHenLabel, donThuocLabel, benhNhanLabel, hoaDonLabel;
     private String doctorId;
 
-    public BaoCao(String doctorId) {
+    public BaoCao(String doctorId) throws SQLException, ClassNotFoundException {
         this.doctorId = doctorId;
         
         setTitle("📄 Danh sách hóa đơn");
@@ -67,7 +69,7 @@ public class BaoCao extends JFrame {
         contentPanel.add(createLichHenPanel(), "lichhen");
         contentPanel.add(createDonThuocPanel(), "donthuoc");
         contentPanel.add(createBenhNhanPanel(), "benhnhan");
-        contentPanel.add(createDonThuocPanel(), "hoadon");
+        contentPanel.add(createHoaDonPanel(), "hoadon");
 
         add(contentPanel, BorderLayout.CENTER);
 
@@ -140,75 +142,73 @@ public class BaoCao extends JFrame {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
         try (Connection conn = DBConnection.getConnection()) {
-            LocalDate startOfYear = LocalDate.of(LocalDate.now().getYear(), 1, 1);
-            LocalDate today = LocalDate.now();
-            
-            String sql = "SELECT MAKHAM, COUNT(*) AS SOLAN_KHAM FROM KHAM WHERE NGAYKHAM >= ? AND NGAYKHAM <=? GROUP BY MAKHAM";
+            int currentYear = LocalDate.now().getYear();
+
+            String sql = "SELECT EXTRACT(MONTH FROM NGAYKHAM) AS THANG, COUNT(*) AS SOLAN_KHAM " +
+                         "FROM KHAM WHERE EXTRACT(YEAR FROM NGAYKHAM) = ? " +
+                         "GROUP BY EXTRACT(MONTH FROM NGAYKHAM) ORDER BY THANG";
             PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setDate(1, java.sql.Date.valueOf(startOfYear));
-            ps.setDate(2, java.sql.Date.valueOf(today));
-            
+            ps.setInt(1, currentYear);
+
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                String maSP = rs.getString("MAKHAM");
-                int soLanKe = rs.getInt("SOLAN_KHAM");
-                dataset.addValue(soLanKe, "Số lần khám", maSP);
+                int thang = rs.getInt("THANG");
+                int soLanKham = rs.getInt("SOLAN_KHAM");
+                dataset.addValue(soLanKham, "Số lần khám", "Tháng " + thang);
             }
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this, "Lỗi truy vấn dữ liệu: " + e.getMessage());
         }
 
         JFreeChart barChart = ChartFactory.createBarChart(
-                "Thống kê số lần khám bệnh trong năm nay",
-                "Mã khám", "Số lần khám",
+                "Thống kê số lần khám bệnh theo tháng trong năm nay",
+                "Tháng", "Số lần khám",
                 dataset
         );
-        
+
         CategoryPlot plot = barChart.getCategoryPlot();
         BarRenderer renderer = new BarRenderer() {
             @Override
             public Paint getItemPaint(int row, int column) {
-                Color[] colors = {
-                    new Color(228, 139, 139)
-                };
-                return colors[column % colors.length];
+                return new Color(228, 139, 139); // Màu hồng
             }
         };
-        renderer.setSeriesPaint(0, new Color(0xCDE8E5));
+        renderer.setSeriesPaint(0, new Color(228, 139, 139));
         plot.setRenderer(renderer);
-        
-        barChart.setBackgroundPaint(new Color(0xCDE8E5));// màu nền ngoài biểu đồ
-        plot.setBackgroundPaint(Color.WHITE); //màu nền trong biểu đồ
-        plot.setRangeGridlinePaint(Color.GRAY); //màu đường kẻ đứt nét ngang
+
+        barChart.setBackgroundPaint(new Color(0xCDE8E5)); // màu nền ngoài biểu đồ
+        plot.setBackgroundPaint(Color.WHITE); // màu nền trong biểu đồ
+        plot.setRangeGridlinePaint(Color.GRAY); // màu lưới
 
         return new ChartPanel(barChart);
     }
+
     
     private JPanel createLichHenPanel() {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
         try (Connection conn = DBConnection.getConnection()) {
-            LocalDate startOfYear = LocalDate.of(LocalDate.now().getYear(), 1, 1);
-            LocalDate today = LocalDate.now();
+            int currentYear = LocalDate.now().getYear();
             
-            String sql = "SELECT MALICH, COUNT(*) AS SOLAN_DATLICH FROM LICHHEN WHERE NGAYDAT >= ? AND NGAYDAT <=? GROUP BY MALICH";
+            String sql = "SELECT EXTRACT(MONTH FROM NGAYDAT) AS THANG, COUNT(*) AS SOLAN_DATLICH " +
+                         "FROM LICHHEN WHERE EXTRACT(YEAR FROM NGAYDAT) = ? " +
+                         "GROUP BY EXTRACT(MONTH FROM NGAYDAT) ORDER BY THANG";
             PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setDate(1, java.sql.Date.valueOf(startOfYear));
-            ps.setDate(2, java.sql.Date.valueOf(today));
+            ps.setInt(1, currentYear);
             
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                String maSP = rs.getString("MALICH");
-                int soLanKe = rs.getInt("SOLAN_DATLICH");
-                dataset.addValue(soLanKe, "Số lần đặt lịch hẹn", maSP);
+                int thang = rs.getInt("THANG");
+                int soLanDatLich = rs.getInt("SOLAN_DATLICH");
+                dataset.addValue(soLanDatLich, "Số lần đặt lịch", "Tháng " + thang);
             }
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this, "Lỗi truy vấn dữ liệu: " + e.getMessage());
         }
 
         JFreeChart barChart = ChartFactory.createBarChart(
-                "Thống kê số lần khám bệnh trong năm nay",
-                "Mã khám", "Số lần đặt lịch hẹn",
+                "Thống kê số lần đặt lịch khám bệnh theo tháng trong năm nay",
+                "Tháng", "Số lần đặt lịch",
                 dataset
         );
         
@@ -217,12 +217,12 @@ public class BaoCao extends JFrame {
             @Override
             public Paint getItemPaint(int row, int column) {
                 Color[] colors = {
-                    new Color(196, 220, 246)
+                    new Color(80, 139, 171)
                 };
                 return colors[column % colors.length];
             }
         };
-        renderer.setSeriesPaint(0, new Color(0xCDE8E5));
+        renderer.setSeriesPaint(0, new Color(80, 139, 171));
         plot.setRenderer(renderer);
         
         barChart.setBackgroundPaint(new Color(0xCDE8E5));// màu nền ngoài biểu đồ
@@ -236,28 +236,27 @@ public class BaoCao extends JFrame {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
         try (Connection conn = DBConnection.getConnection()) {
-            LocalDate startOfYear = LocalDate.of(LocalDate.now().getYear(), 1, 1);
-            LocalDate today = LocalDate.now();
+            int currentYear = LocalDate.now().getYear();
             
-            String sql = "SELECT MASP, COUNT(*) AS SOLAN_KE FROM CTDT C JOIN DONTHUOC_DONTHUOCYC D ON C.MADT = D.MADT "
-                         + "WHERE NGAYBAN >= ? AND NGAYBAN <=? GROUP BY MASP";
+            String sql = "SELECT EXTRACT(MONTH FROM NGAYBAN) AS THANG, COUNT(*) AS SOLAN_BANTHUOC " +
+                         "FROM DONTHUOC_DONTHUOCYC WHERE EXTRACT(YEAR FROM NGAYBAN) = ? " +
+                         "GROUP BY EXTRACT(MONTH FROM NGAYBAN) ORDER BY THANG";
             PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setDate(1, java.sql.Date.valueOf(startOfYear));
-            ps.setDate(2, java.sql.Date.valueOf(today));
+            ps.setInt(1, currentYear);
             
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                String maSP = rs.getString("MASP");
-                int soLanKe = rs.getInt("SOLAN_KE");
-                dataset.addValue(soLanKe, "Số lần kê", maSP);
+                int thang = rs.getInt("THANG");
+                int soLanBanThuoc = rs.getInt("SOLAN_BANTHUOC");
+                dataset.addValue(soLanBanThuoc, "Số lần bán thuốc", "Tháng " + thang);
             }
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this, "Lỗi truy vấn dữ liệu: " + e.getMessage());
         }
 
         JFreeChart barChart = ChartFactory.createBarChart(
-                "Thống kê thuốc đã kê trong năm nay",
-                "Tên sản phẩm", "Số lần kê",
+                "Thống kê số lần đặt lịch khám bệnh theo tháng trong năm nay",
+                "Tháng", "Số lần bán thuốc",
                 dataset
         );
         
@@ -266,12 +265,12 @@ public class BaoCao extends JFrame {
             @Override
             public Paint getItemPaint(int row, int column) {
                 Color[] colors = {
-                    new Color(0xCDE8E5)
+                    new Color(74, 141, 150)
                 };
                 return colors[column % colors.length];
             }
         };
-        renderer.setSeriesPaint(0, new Color(0xCDE8E5));
+        renderer.setSeriesPaint(0, new Color(74, 141, 150));
         plot.setRenderer(renderer);
         
         barChart.setBackgroundPaint(new Color(0xCDE8E5));// màu nền ngoài biểu đồ
@@ -297,23 +296,31 @@ public class BaoCao extends JFrame {
                 "SELECT GIOITINH, COUNT(*) AS SL FROM USERS WHERE ROLE = 'Bệnh nhân' GROUP BY GIOITINH"));
 
         tabbedPane.addTab("Bảo hiểm y tế", createPieChart("Bảo hiểm y tế",
-                "SELECT COALESCE(SOBHYT, 'Không') AS BAOHIEM, COUNT(*) AS SL FROM BENHNHAN GROUP BY SOBHYT"));
+                "SELECT CASE " +
+                "WHEN SOBHYT = 'Không' THEN 'Không có BHYT' " +
+                "ELSE 'Có BHYT' END AS BAOHIEM, COUNT(*) AS SL FROM BENHNHAN " +
+                "GROUP BY CASE WHEN SOBHYT = 'Không' THEN 'Không có BHYT' ELSE 'Có BHYT' END"));
 
         tabbedPane.addTab("Nhóm máu", createLineChart("Nhóm máu",
                 "SELECT NHOMMAU, COUNT(*) AS SL FROM BENHNHAN GROUP BY NHOMMAU"));
 
         tabbedPane.addTab("Độ tuổi", createLineChart("Độ tuổi",
-                "SELECT CASE " +
-                "WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) < 18 THEN 'Dưới 18' " +
-                "WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) BETWEEN 18 AND 35 THEN '18-35' " +
-                "WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) BETWEEN 36 AND 60 THEN '36-60' " +
-                "ELSE 'Trên 60' END AS DO_TUOI, COUNT(*) AS SL " +
-                "FROM USERS WHERE ROLE = 'Bệnh nhân' GROUP BY " +
-                "CASE " +
-                "WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) < 18 THEN 'Dưới 18' " +
-                "WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) BETWEEN 18 AND 35 THEN '18-35' " +
-                "WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) BETWEEN 36 AND 60 THEN '36-60' " +
-                "ELSE 'Trên 60' END"));
+            "SELECT DO_TUOI, COUNT(*) AS SL FROM (" +
+            "  SELECT CASE " +
+            "    WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) < 18 THEN 'Dưới 18' " +
+            "    WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) BETWEEN 18 AND 35 THEN '18-35' " +
+            "    WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, NGAYSINH)/12) BETWEEN 36 AND 60 THEN '36-60' " +
+            "    ELSE 'Trên 60' " +
+            "  END AS DO_TUOI " +
+            "  FROM USERS WHERE ROLE = 'Bệnh nhân'" +
+            ") GROUP BY DO_TUOI " +
+            "ORDER BY CASE DO_TUOI " +
+            "  WHEN 'Dưới 18' THEN 1 " +
+            "  WHEN '18-35' THEN 2 " +
+            "  WHEN '36-60' THEN 3 " +
+            "  ELSE 4 END"
+        ));
+
 
         tabbedPane.addTab("Dị ứng phổ biến", createBarChart("Dị ứng phổ biến",
                 "SELECT DIUNG, COUNT(*) AS SL FROM BENHNHAN GROUP BY DIUNG"));
@@ -368,9 +375,9 @@ public class BaoCao extends JFrame {
                 plot.setSectionPaint((Comparable) key, new Color(196, 220, 246)); 
             } else if (label.contains("nữ")) {
                 plot.setSectionPaint((Comparable) key, new Color(246, 196, 235));
-            } else if (label.contains("không")) {
+            } else if (label.contains("không có bhyt")) {
                 plot.setSectionPaint((Comparable) key, new Color(237, 221, 250)); 
-            } else {
+            } else if (label.contains("có bhyt")) {
                 plot.setSectionPaint((Comparable) key, new Color(226, 198, 247)); 
             }
             
@@ -429,11 +436,83 @@ public class BaoCao extends JFrame {
         chart.setBackgroundPaint(new Color(0xCDE8E5));
         return new ChartPanel(chart);
     }
+    
+    private JPanel createHoaDonPanel() throws SQLException, ClassNotFoundException {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(0xCDE8E5));
 
+        JTabbedPane tabbedPane = new JTabbedPane();
 
-     public static void main(String[] args) {
+        tabbedPane.addTab("Hóa đơn khám bệnh", createGroupedBarChart("Thống kê trạng thái hóa đơn khám bệnh theo tháng trong năm nay",
+            "SELECT EXTRACT(MONTH FROM NGAYLAP) AS THANG, " +
+            "TRANGTHAITT, COUNT(*) AS SL " +
+            "FROM HOADON_KHAMBENH " +
+            "WHERE EXTRACT(YEAR FROM NGAYLAP) = EXTRACT(YEAR FROM SYSDATE) " +
+            "GROUP BY EXTRACT(MONTH FROM NGAYLAP), TRANGTHAITT " +
+            "ORDER BY THANG"));
+
+        tabbedPane.addTab("Hóa đơn điều trị", createGroupedBarChart("Thống kê trạng thái hóa đơn điều trị theo tháng trong năm nay",
+            "SELECT EXTRACT(MONTH FROM NGAYTIEPNHAN) AS THANG, " +
+            "TRANGTHAITT, COUNT(*) AS SL " +
+            "FROM DIEUTRI " +
+            "WHERE EXTRACT(YEAR FROM NGAYTIEPNHAN) = EXTRACT(YEAR FROM SYSDATE) " +
+            "GROUP BY EXTRACT(MONTH FROM NGAYTIEPNHAN), TRANGTHAITT " +
+            "ORDER BY THANG"));
+
+        panel.add(tabbedPane, BorderLayout.CENTER);
+        return panel;
+    }
+    
+    private JPanel createGroupedBarChart(String title, String query) throws SQLException, ClassNotFoundException {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                String month = "Tháng " + rs.getInt("THANG");
+                String status = rs.getString("TRANGTHAITT");
+                int count = rs.getInt("SL");
+                dataset.addValue(count, status, month); // status = "Đã thanh toán" hoặc "Chưa thanh toán"
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                title,
+                "Tháng",
+                "Số hóa đơn",
+                dataset,
+                PlotOrientation.VERTICAL,
+                true, true, false);
+
+        
+        CategoryPlot plot = chart.getCategoryPlot();
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+
+        renderer.setSeriesPaint(0, new Color(56, 122, 130)); // Đã thanh toán
+        renderer.setSeriesPaint(1, new Color(194, 224, 135)); // Chưa thanh toán
+        
+
+        plot.setRenderer(renderer);
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setRangeGridlinePaint(Color.GRAY);
+
+        chart.setBackgroundPaint(new Color(0xCDE8E5));
+        
+        return new ChartPanel(chart);
+    }
+
+    public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new BaoCao("U001").setVisible(true);
+            try {
+                new BaoCao("U001").setVisible(true);
+            } catch (SQLException | ClassNotFoundException ex) {
+                Logger.getLogger(BaoCao.class.getName()).log(Level.SEVERE, null, ex);
+            }
         });
     }
 }

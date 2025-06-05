@@ -167,7 +167,7 @@ public class Bill extends JFrame {
             String phuongThucTT = phuongThucTTField.getText().trim(); 
 
             try {
-                Map<String, List<String[]>> resultMap = searchAdvancedBills(keyword, ngayLap, tongTien, phuongThucTT);
+                Map<String, List<String[]>> resultMap = searchAdvancedBills(doctorId, keyword, ngayLap, tongTien, phuongThucTT);
 
                 content.removeAll();
                 content.add(searchPanel);
@@ -249,26 +249,27 @@ public class Bill extends JFrame {
     private List<String[]> getBillsByStatus(String statusCondition) throws SQLException, ClassNotFoundException {
         List<String[]> result = new ArrayList<>();
 
-        String sqlBase = "SELECT * FROM HOADON_KHAMBENH WHERE TRANGTHAITT ";
-        String sql = sqlBase + statusCondition;
+        String sql = "SELECT * FROM HOADON_KHAMBENH H JOIN KHAM K ON H.MAKHAM = K.MAKHAM WHERE K.MABS = ? AND H.TRANGTHAITT" + statusCondition;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, doctorId.trim());
 
-            while (rs.next()) {
-                String[] row = {
-                    rs.getString("MAHDKB"),
-                    rs.getString("MAKHAM"),
-                    rs.getString("NGAYLAP"),
-                    rs.getString("TIENKHAM"),
-                    rs.getString("TONGTIEN"),
-                    rs.getString("PHUONGTHUCTT"),
-                    rs.getString("GHICHU") == null ? "" : rs.getString("GHICHU"),
-                    rs.getString("TRANGTHAITT"),
-                };
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String[] row = {
+                        rs.getString("MAHDKB"),
+                        rs.getString("MAKHAM"),
+                        rs.getString("NGAYLAP"),
+                        rs.getString("TIENKHAM"),
+                        rs.getString("TONGTIEN"),
+                        rs.getString("PHUONGTHUCTT"),
+                        rs.getString("GHICHU") == null ? "" : rs.getString("GHICHU"),
+                        rs.getString("TRANGTHAITT"),
+                    };
 
-                result.add(row);
+                    result.add(row);
+                }
             }
 
         } catch (SQLException e) {
@@ -279,18 +280,19 @@ public class Bill extends JFrame {
     }
 
     
-    private Map<String, List<String[]>> searchAdvancedBills(String keyword, String ngayLap, String tongTien, String phuongThucTT)
+    private Map<String, List<String[]>> searchAdvancedBills(String doctorId, String keyword, String ngayLap, String tongTien, String phuongThucTT)
         throws SQLException, ClassNotFoundException {
         Map<String, List<String[]>> resultMap = new HashMap<>();
         resultMap.put("Chưa thanh toán", new ArrayList<>());
         resultMap.put("Đã thanh toán", new ArrayList<>());
 
-        StringBuilder sql = new StringBuilder("SELECT * FROM HOADON_KHAMBENH WHERE 1=1");
+        StringBuilder sql = new StringBuilder("SELECT * FROM HOADON_KHAMBENH H JOIN KHAM K ON H.MAKHAM = K.MAKHAM WHERE K.MABS = ?");
         List<String> params = new ArrayList<>();
+        params.add(doctorId.trim());
 
         if (!keyword.isEmpty()) {
-            sql.append(" AND (LOWER(MAHDKB) LIKE ? OR LOWER(MAKHAM) LIKE ? OR LOWER(NGAYLAP) LIKE ? OR LOWER(TIENKHAM) LIKE ? "
-                    + "OR LOWER(TONGTIEN) LIKE ? OR LOWER(PHUONGTHUCTT) LIKE ? OR LOWER(GHICHU) LIKE ? OR LOWER(TRANGTHAITT) LIKE ?)");
+            sql.append(" AND (LOWER(H.MAHDKB) LIKE ? OR LOWER(H.MAKHAM) LIKE ? OR LOWER(H.NGAYLAP) LIKE ? OR LOWER(H.TIENKHAM) LIKE ? "
+                    + "OR LOWER(H.TONGTIEN) LIKE ? OR LOWER(H.PHUONGTHUCTT) LIKE ? OR LOWER(H.GHICHU) LIKE ? OR LOWER(H.TRANGTHAITT) LIKE ?)");
             for (int i = 0; i < 8; i++) params.add("%" + keyword.toLowerCase() + "%");
         }
 
@@ -595,7 +597,11 @@ public class Bill extends JFrame {
             });
 
             btnTaoHD.addActionListener(e -> {
-                new CreateBill(doctorId).setVisible(true);
+                try {
+                    new CreateBill(doctorId).setVisible(true);
+                } catch (SQLException | ClassNotFoundException ex) {
+                    Logger.getLogger(Bill.class.getName()).log(Level.SEVERE, null, ex);
+                }
             });
 
             JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));

@@ -10,6 +10,9 @@ import java.awt.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public class CreateBill extends JFrame {
@@ -35,7 +38,7 @@ public class CreateBill extends JFrame {
         }
     }
 
-    public CreateBill(String doctorId) {
+    public CreateBill(String doctorId) throws SQLException, ClassNotFoundException {
         this.doctorId = doctorId;
         
         setTitle("Tạo hóa đơn khám bệnh");
@@ -177,19 +180,23 @@ public class CreateBill extends JFrame {
         add(formPanel, BorderLayout.CENTER);
         setVisible(true);
     }
-
-    private void loadMaKham() {
-        try (Connection conn = DBConnection.getConnection()) {
-            String sql = "SELECT MAKHAM FROM KHAM WHERE MABS = ?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                rs.getString("MAKHAM");
+    
+    private void loadMaKham() throws SQLException, ClassNotFoundException {
+        String sql = "SELECT MAKHAM FROM KHAM WHERE MABS = ?";
+        try (Connection conn = DBConnection.getConnection();
+        PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, doctorId.trim());
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    maKhamComboBox.addItem(rs.getString("MAKHAM"));
+                }
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Lỗi tải mã khám: " + e.getMessage());
         }
     }
+
     
     private String generateAppointmentId(Connection conn) {
         String prefix = "HDKB";
@@ -288,7 +295,11 @@ public class CreateBill extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new CreateBill("U001").setVisible(true);
+            try {
+                new CreateBill("U001").setVisible(true);
+            } catch (SQLException | ClassNotFoundException ex) {
+                Logger.getLogger(CreateBill.class.getName()).log(Level.SEVERE, null, ex);
+            }
         });
     }
 }
