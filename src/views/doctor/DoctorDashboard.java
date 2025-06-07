@@ -11,12 +11,12 @@ import java.awt.event.MouseEvent;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import menuDoctor.PersonalProfile;
+import views.menuDoctor.PersonalProfile;
 
-import menuPatient.Contact;
-import menuPatient.Notification;
-import menuPatient.SecurityPolicy;
-import menuPatient.TermOfUse;
+import views.menuPatient.Contact;
+import views.menuPatient.Notification;
+import views.menuPatient.SecurityPolicy;
+import views.menuPatient.TermOfUse;
 import views.patient.ProductView;
 import views.patient.ServiceForm;
 
@@ -281,7 +281,7 @@ public class DoctorDashboard extends JFrame {
             }
             case "Dịch vụ khám" -> {
                 System.out.println(doctorId);
-                new ServiceForm(doctorId).setVisible(true);
+                new ServiceFormDoc(doctorId).setVisible(true);
             }
             case "Hóa đơn" -> {
                 System.out.println(doctorId);

@@ -23,7 +23,8 @@ public class BuyMed extends JFrame {
     private JTextField txtHoTen, txtGioiTinh, txtNgaySinh, txtDiaChi, txtSoDienThoai;
     private JTextArea txtLichSuBenhLy, txtDiUng;
     private JLabel lblTenFile;
-    private JButton btnUpload, btnGuiYeuCau;
+    private JButton btnUpload;
+    private JButton btnGuiYeuCau;
     private File selectedFile;
     private String patientId;
     

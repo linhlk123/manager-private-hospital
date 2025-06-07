@@ -30,25 +30,26 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 
-
 public class PayBill extends JFrame {
     private JTextField txtSearch, txtMaHD, txtTongTien;
     private JComboBox<String> cbTrangThai;
     private JTable tableThuoc, tableHDKham, tableDieuTri;
     private String patientId;
+    private JPanel payBillPanel; 
 
 
     public PayBill(String patientId) throws SQLException, ClassNotFoundException {
         this.patientId = patientId;
         
         setTitle("THANH TOÁN HÓA ĐƠN");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH); // Fullscreen
         //Co theo kích thước màn hình (đề xuất)
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screenSize.width, screenSize.height); // full màn hình
         
-        initComponents();
+        payBillPanel = initComponents();
+        add(payBillPanel); 
     }
     
     private void filterTable(JTable table, String keyword, String maHD, double tongTien, String trangThai) {
@@ -97,8 +98,8 @@ public class PayBill extends JFrame {
     }
 
     
-    public void initComponents() throws SQLException, ClassNotFoundException {
-        setLayout(new BorderLayout());
+    public JPanel initComponents() throws SQLException, ClassNotFoundException {
+        JPanel panel = new JPanel(new BorderLayout());
         
         // ===== TOP PANEL (Tiêu đề + tìm kiếm) =====
         JPanel topPanel = new JPanel();
@@ -190,7 +191,7 @@ public class PayBill extends JFrame {
 
         topPanel.add(searchPanel, BorderLayout.CENTER);
         
-        add(topPanel, BorderLayout.NORTH); 
+        panel.add(topPanel, BorderLayout.NORTH); 
 
 
         // ===== BOTTOM PANEL (3 bảng) =====
@@ -198,7 +199,7 @@ public class PayBill extends JFrame {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         mainPanel.setBackground(new Color(0xd6eaed));
-        add(mainPanel, BorderLayout.CENTER);
+        panel.add(mainPanel, BorderLayout.CENTER);
 
         // Các bảng
         mainPanel.add(createTableSection("Hóa đơn thuốc", tableThuoc = new JTable()));
@@ -208,6 +209,8 @@ public class PayBill extends JFrame {
         loadThuocTableData();    
         loadHoaDonKBTableData();       
         loadDieuTriTableData(); 
+        
+        return panel;
         
     }
 
@@ -442,9 +445,24 @@ public class PayBill extends JFrame {
         }
 
         textPane.setCaretPosition(0); // Đặt con trỏ về đầu => không cuộn xuống cuối
-
+        
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setBackground(new Color(0xd9eef2));
+        
+        String status = table.getValueAt(row, table.getColumnCount() - 1).toString().trim().toLowerCase();
+
+        if (status.equals("chưa thanh toán")) {
+            JButton payButton = new JButton("Thanh toán");
+            payButton.setBackground(new Color(0x007b00));
+            payButton.setForeground(Color.WHITE);
+            payButton.setFocusPainted(false);
+            payButton.addActionListener(e -> {
+                showPaymentDialog(table, row, dialog);
+            });
+            buttonPanel.add(payButton);
+        }
+
+        
         JButton closeButton = new JButton("Đóng");
         closeButton.setBackground(new Color(0x2B4A59));
         closeButton.setForeground(Color.WHITE);
@@ -459,6 +477,118 @@ public class PayBill extends JFrame {
         dialog.setSize(500, 450);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
+    }
+    
+    private void showPaymentDialog(JTable table, int row, JDialog parentDialog) {
+        String maHD = table.getValueAt(row, 0).toString();
+
+        // Xác định cột tổng tiền tương ứng với từng bảng
+        String tongTien = "";
+        if (table == tableThuoc) {
+            tongTien = table.getValueAt(row, 11).toString(); 
+        } else if (table == tableHDKham) {
+            tongTien = table.getValueAt(row, 3).toString(); 
+        } else if (table == tableDieuTri) {
+            tongTien = table.getValueAt(row, 7).toString(); 
+        }
+
+        JDialog payDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Xác nhận thanh toán", true);
+        payDialog.setSize(400, 250);
+        payDialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new GridLayout(4, 2, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(new Color(0xd9eef2));
+
+        panel.add(new JLabel("Mã hóa đơn:"));
+        JTextField txtMaHD = new JTextField(maHD);
+        txtMaHD.setEditable(false);
+        panel.add(txtMaHD);
+
+        panel.add(new JLabel("Tổng tiền:"));
+        JTextField txtTongTien = new JTextField(tongTien);
+        txtTongTien.setEditable(false);
+        panel.add(txtTongTien);
+
+        panel.add(new JLabel("Phương thức thanh toán:"));
+        String[] methods = {"Tiền mặt", "Chuyển khoản", "Thẻ ngân hàng", "Ví điện tử"};
+        JComboBox<String> cbPhuongThuc = new JComboBox<>(methods);
+        cbPhuongThuc.setBackground(Color.WHITE);
+        panel.add(cbPhuongThuc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton btnXacNhan = new JButton("Xác nhận");
+        btnXacNhan.setBackground(new Color(0x2B4A59));
+        btnXacNhan.setForeground(Color.WHITE);
+        JButton btnHuy = new JButton("Hủy");
+        btnHuy.setBackground(new Color(0xff9800));
+
+        btnXacNhan.addActionListener(e -> {
+            try {
+                Connection conn = DBConnection.getConnection();
+                String ma = table.getValueAt(row, 0).toString();
+
+                String updateQuery = "";
+                if (table == tableThuoc) {
+                    updateQuery = "UPDATE DONTHUOC_DONTHUOCYC SET TRANGTHAITT = 'Đã thanh toán' WHERE MADT = ?";
+                } else if (table == tableHDKham) {
+                    updateQuery = "UPDATE HOADON_KHAMBENH SET TRANGTHAITT = 'Đã thanh toán' WHERE MAHDKB = ?";
+                } else if (table == tableDieuTri) {
+                    updateQuery = "UPDATE DIEUTRI SET TRANGTHAITT = 'Đã thanh toán' WHERE MADTR = ?";
+                }
+
+                PreparedStatement pstmt = conn.prepareStatement(updateQuery);
+                pstmt.setString(1, ma);
+                int rows = pstmt.executeUpdate();
+                if (rows > 0) {
+                    JOptionPane.showMessageDialog(this, "Thanh toán thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    payDialog.dispose();
+                    parentDialog.dispose();
+                    reloadPayBillPanel(); 
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Lỗi khi thanh toán!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        btnHuy.addActionListener(e -> payDialog.dispose());
+
+        buttonPanel.add(btnXacNhan);
+        buttonPanel.add(btnHuy);
+
+        payDialog.setLayout(new BorderLayout());
+        payDialog.add(panel, BorderLayout.CENTER);
+        payDialog.add(buttonPanel, BorderLayout.SOUTH);
+        payDialog.setVisible(true);
+    }
+
+    
+    private void reloadPayBillPanel() {
+        try {
+            Container parent = payBillPanel.getParent(); // Lấy panel cha
+            int index = -1;
+
+            if (parent != null) {
+                Component[] components = parent.getComponents();
+                for (int i = 0; i < components.length; i++) {
+                    if (components[i] == payBillPanel) {
+                        index = i;
+                        break;
+                    }
+                }
+
+                if (index != -1) {
+                    parent.remove(payBillPanel); // Xóa panel cũ
+                    payBillPanel = initComponents(); // Tạo lại panel mới
+                    parent.add(payBillPanel, index); // Thêm panel mới vào đúng vị trí
+                    parent.revalidate(); // Cập nhật giao diện
+                    parent.repaint();    // Vẽ lại
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {

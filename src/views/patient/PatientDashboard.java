@@ -12,11 +12,11 @@ import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import menuPatient.Contact;
-import menuPatient.Notification;
-import menuPatient.PersonalInfo;
-import menuPatient.SecurityPolicy;
-import menuPatient.TermOfUse;
+import views.menuPatient.Contact;
+import views.menuPatient.Notification;
+import views.menuPatient.PersonalInfo;
+import views.menuPatient.SecurityPolicy;
+import views.menuPatient.TermOfUse;
 
 
 public class PatientDashboard extends JFrame {
