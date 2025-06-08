@@ -4,6 +4,14 @@
  */
 package views.doctor;
 
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import utils.DBConnection;
 import javax.swing.*;
 import java.awt.*;
@@ -11,6 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -199,7 +208,7 @@ public class CreateBill extends JFrame {
 
     
     private String generateAppointmentId(Connection conn) {
-        String prefix = "HDKB";
+        String prefix = "HDK";
         String sql = "SELECT MAX(MAHDKB) FROM HOADON_KHAMBENH";
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -236,6 +245,62 @@ public class CreateBill extends JFrame {
         return prefix + "001"; // Nếu chưa có thông báo nào
     }
 
+//    private void taoHD(String doctorId) {
+//        if (maKhamComboBox.getSelectedItem() == null
+//                || txtTienKham.getText().isEmpty()
+//                || txtTongTien.getText().isEmpty()
+//                || txtGhiChu.getText().isEmpty()
+//                || trangThaiTTComboBox.getSelectedItem() == null) {
+//            JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin.");
+//            return;
+//        }
+//
+//        String maKham = (String) maKhamComboBox.getSelectedItem();
+//        String tienKham = txtTienKham.getText();
+//        String tongTien = txtTongTien.getText();
+//        String ghiChu = txtGhiChu.getText();
+//        String trangThaiTT = (String) trangThaiTTComboBox.getSelectedItem();
+//
+//        try (Connection conn = DBConnection.getConnection()) {
+//            String maHDKB = generateAppointmentId(conn);
+//
+//            String sql = "INSERT INTO HOADON_KHAMBENH (MAHDKB, MAKHAM, TIENKHAM, TONGTIEN, GHICHU, TRANGTHAITT) " +
+//                         "VALUES (?, ?, ?, ?, ?, ?)";
+//            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+//                ps.setString(1, maHDKB);
+//                ps.setString(2, maKham);
+//                ps.setString(3, tienKham);
+//                ps.setString(4, tongTien);
+//                ps.setString(5, ghiChu);
+//                ps.setString(6, trangThaiTT);
+//
+//                int rows = ps.executeUpdate();
+//                if (rows > 0) {
+//                    // Lấy ngày hiện tại
+//                    String ngayTao = java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 19);
+//                    String noidung = "Bạn đã tạo hóa đơn thành công vào ngày " + ngayTao + ".";
+//
+//                    String sqlTB = "INSERT INTO THONGBAO (MATB, USER_ID, NOIDUNG, LOAI) VALUES (?, ?, ?, ?)";
+//                    try (PreparedStatement psTB = conn.prepareStatement(sqlTB)) {
+//                        psTB.setString(1, generateNotificationId(conn));
+//                        psTB.setString(2, doctorId); // doctorId là mã người nhận thông báo
+//                        psTB.setString(3, noidung);
+//                        psTB.setString(4, "Hóa đơn");
+//                        psTB.executeUpdate();
+//                    }
+//
+//                    JOptionPane.showMessageDialog(this, "Đặt lịch thành công!");
+//                    dispose();
+//                } else {
+//                    JOptionPane.showMessageDialog(this, "Đặt lịch thất bại.");
+//                }
+//            }
+//        } catch (Exception e) {
+//            JOptionPane.showMessageDialog(this, "Lỗi đặt lịch: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
+    
     private void taoHD(String doctorId) {
         if (maKhamComboBox.getSelectedItem() == null
                 || txtTienKham.getText().isEmpty()
@@ -267,30 +332,103 @@ public class CreateBill extends JFrame {
 
                 int rows = ps.executeUpdate();
                 if (rows > 0) {
-                    // Lấy ngày hiện tại
+                    // Gửi thông báo cho bác sĩ
                     String ngayTao = java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 19);
                     String noidung = "Bạn đã tạo hóa đơn thành công vào ngày " + ngayTao + ".";
 
                     String sqlTB = "INSERT INTO THONGBAO (MATB, USER_ID, NOIDUNG, LOAI) VALUES (?, ?, ?, ?)";
                     try (PreparedStatement psTB = conn.prepareStatement(sqlTB)) {
                         psTB.setString(1, generateNotificationId(conn));
-                        psTB.setString(2, doctorId); // doctorId là mã người nhận thông báo
+                        psTB.setString(2, doctorId);
                         psTB.setString(3, noidung);
                         psTB.setString(4, "Hóa đơn");
                         psTB.executeUpdate();
                     }
 
-                    JOptionPane.showMessageDialog(this, "Đặt lịch thành công!");
+                    // Lấy email và tên bệnh nhân từ mã khám
+                    String sqlGetBN = "SELECT U.EMAIL, U.HOTENND " +
+                                      "FROM KHAM K JOIN USERS U ON K.MABN = U.ID " +
+                                      "WHERE K.MAKHAM = ?";
+                    try (PreparedStatement psGetBN = conn.prepareStatement(sqlGetBN)) {
+                        psGetBN.setString(1, maKham);
+                        try (ResultSet rs = psGetBN.executeQuery()) {
+                            if (rs.next()) {
+                                String email = rs.getString("EMAIL");
+                                String tenBN = rs.getString("HOTENND");
+
+                                if (email != null && !email.isEmpty()) {
+                                    String subject = "Thông báo hóa đơn khám bệnh";
+                                    String message = "Xin chào " + tenBN + ",\n\n" +
+                                                     "Bạn vừa có một hóa đơn khám bệnh được tạo vào ngày " + ngayTao + ".\n" +
+                                                     "Tổng tiền: " + tongTien + " VNĐ\n" +
+                                                     "Tình trạng: " + trangThaiTT + "\n\n" +
+                                                     "Vui lòng đăng nhập hệ thống để kiểm tra và thanh toán.\n\n" +
+                                                     "Trân trọng,\n\n------------------------\n" +
+                                                     "Bệnh viện tư Healink\n" +
+                                                     "Địa chỉ: Khu phố 6, phường Linh Trung, Tp.Thủ Đức, Tp.Hồ Chí Minh\n" +
+                                                     "Điện thoại: (0123) 456 789\n" +
+                                                     "Email: contactBVTHealink@gmail.com\n" +
+                                                     "Website: www.benhvientuHealink.vn\n" +
+                                                     "Facebook: fb.com/benhvientuHealink";
+
+                                    try {
+                                        new EmailSender().sendEmail(email, subject, message);
+                                        System.out.println("Đã gửi email hóa đơn khám cho: " + email);
+                                    } catch (Exception ex) {
+                                        ex.printStackTrace();
+                                        System.err.println("Không thể gửi email hóa đơn.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    JOptionPane.showMessageDialog(this, "Tạo hóa đơn thành công!");
                     dispose();
                 } else {
-                    JOptionPane.showMessageDialog(this, "Đặt lịch thất bại.");
+                    JOptionPane.showMessageDialog(this, "Tạo hóa đơn thất bại.");
                 }
             }
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi đặt lịch: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Lỗi tạo hóa đơn: " + e.getMessage());
             e.printStackTrace();
         }
     }
+    
+    private class EmailSender {
+        private final String fromEmail = "diep03062015@gmail.com";
+        private final String password = "elaz xcyx nqdo hsyl";
+
+        public void sendEmail(String toEmail, String subject, String messageText) {
+            Properties props = new Properties();
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.host", "smtp.gmail.com");
+            props.put("mail.smtp.port", "587");
+
+            Session session = Session.getInstance(props, new Authenticator() {
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(fromEmail, password);
+                }
+            });
+
+            try {
+                Message message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(fromEmail));
+                message.setRecipients(
+                    Message.RecipientType.TO, InternetAddress.parse(toEmail)
+                );
+                message.setSubject(subject);
+                message.setText(messageText);
+
+                Transport.send(message);
+                System.out.println("Email sent successfully to " + toEmail);
+            } catch (MessagingException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
 
     public static void main(String[] args) {

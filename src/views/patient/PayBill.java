@@ -4,6 +4,14 @@
  */
 package views.patient;
 
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -27,13 +35,14 @@ import javax.swing.RowFilter;
 import javax.swing.table.TableRowSorter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 
 public class PayBill extends JFrame {
     private JTextField txtSearch, txtMaHD, txtTongTien;
     private JComboBox<String> cbTrangThai;
-    private JTable tableThuoc, tableHDKham, tableDieuTri;
+    private JTable tableThuoc, tableHDKham;
     private String patientId;
     private JPanel payBillPanel; 
 
@@ -94,7 +103,6 @@ public class PayBill extends JFrame {
 
         filterTable(tableThuoc, keyword, maHD, tongTien, trangThai);
         filterTable(tableHDKham, keyword, maHD, tongTien, trangThai);
-        filterTable(tableDieuTri, keyword, maHD, tongTien, trangThai);
     }
 
     
@@ -133,6 +141,7 @@ public class PayBill extends JFrame {
         btnSearch.setBackground(new Color(0x78a2a7));
         btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 14));
         
+        //Hover
         btnSearch.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -194,7 +203,7 @@ public class PayBill extends JFrame {
         panel.add(topPanel, BorderLayout.NORTH); 
 
 
-        // ===== BOTTOM PANEL (3 bảng) =====
+        // ===== BOTTOM PANEL (2 bảng) =====
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -204,14 +213,11 @@ public class PayBill extends JFrame {
         // Các bảng
         mainPanel.add(createTableSection("Hóa đơn thuốc", tableThuoc = new JTable()));
         mainPanel.add(createTableSection("Hóa đơn khám bệnh", tableHDKham = new JTable()));
-        mainPanel.add(createTableSection("Hóa đơn điều trị", tableDieuTri = new JTable()));
         
         loadThuocTableData();    
         loadHoaDonKBTableData();       
-        loadDieuTriTableData(); 
         
         return panel;
-        
     }
 
     private JPanel createTableSection(String title, JTable table) {
@@ -333,49 +339,6 @@ public class PayBill extends JFrame {
             }
         }
     }
-
-    
-    public void loadDieuTriTableData() throws SQLException, ClassNotFoundException {
-        DefaultTableModel model = (DefaultTableModel) tableDieuTri.getModel();
-        model.setRowCount(0); // Clear table
-
-        // Set column headers
-        model.setColumnIdentifiers(new Object[] {
-            "Mã điều trị", "Mã khám", "Mã bác sĩ", "Phòng điều trị",
-            "Phương pháp điều trị", "Ngày tiếp nhận", "Ngày kết thúc dự kiến",
-            "Tổng hóa đơn điều trị", "Kết quả điều trị", "Lưu ý", "Trạng thái thanh toán"
-        });
-        
-        tableDieuTri.getColumnModel().getColumn(10).setCellRenderer(new StatusCellRenderer());
-
-        String sql = "SELECT * FROM DIEUTRI D JOIN KHAM K ON D.MAKHAM = K.MAKHAM WHERE K.MABN = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, patientId);
-
-            try (ResultSet rs = stmt.executeQuery()) {       
-                while (rs.next()) {
-                    Object[] row = {
-                        rs.getString("MADTR"),
-                        rs.getString("MAKHAM"),
-                        rs.getString("MABS"),
-                        rs.getString("PHONGDIEUTRI"),
-                        rs.getString("PHUONGPHAPDT"),
-                        rs.getDate("NGAYTIEPNHAN"),
-                        rs.getDate("NGAYKTDK"),
-                        rs.getDouble("TONGHDDT"),
-                        rs.getString("KETQUADT"),
-                        rs.getString("LUUY"),
-                        rs.getString("TRANGTHAITT")
-                    };
-                    model.addRow(row);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
     
     private void showBillDetails(JTable table, int row) {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi tiết hóa đơn", true);
@@ -427,18 +390,6 @@ public class PayBill extends JFrame {
                 while (rs.next()) {
                     doc.insertString(doc.getLength(), "Dịch vụ: " + rs.getString("MADV") + ", SL: " + rs.getInt("SOLUONGDV") + ", Trị giá: " + rs.getDouble("TRIGIA") + "\n", normalAttr);
                 }
-            } else if (table == tableDieuTri) {
-                String maDTri = table.getValueAt(row, 0).toString(); // MADTR
-                ResultSet rs = stmt.executeQuery("SELECT * FROM CTDIEUTRI WHERE MADTR = '" + maDTri + "'");
-                doc.insertString(doc.getLength(), "\n--- Chi tiết điều trị ---\n", boldAttr);
-                while (rs.next()) {
-                    doc.insertString(doc.getLength(),
-                        "DV: " + rs.getString("MADV") +
-                        ", SL DV: " + rs.getInt("SOLUONGDV") +
-                        ", Đơn thuốc: " + rs.getString("MADT") +
-                        ", SL ĐT: " + rs.getInt("SOLUONGDT") + "\n", normalAttr
-                    );
-                }
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -478,18 +429,134 @@ public class PayBill extends JFrame {
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
-    
+
+    private void showBankTransferDialog(String tongTien, JTable table, int row, JDialog parentDialog) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chuyển khoản ngân hàng", true);
+        dialog.setSize(500, 650);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.getContentPane().setBackground(new Color(0xd6eaed));
+
+        ImageIcon originalIcon = new ImageIcon("src/views/patient/image/chuyenkhoan.jpg");
+        Image resizedImage = originalIcon.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
+        ImageIcon resizedIcon = new ImageIcon(resizedImage);
+        JLabel qrLabel = new JLabel(resizedIcon, SwingConstants.CENTER);
+        dialog.add(qrLabel, BorderLayout.NORTH);
+
+        JPanel infoPanel = new JPanel(new GridLayout(6, 1, 5, 5));
+        infoPanel.setBorder(BorderFactory.createEmptyBorder(5, 70, 5, 20));
+        infoPanel.setBackground(new Color(0xd6eaed));
+        infoPanel.add(new JLabel("👤 Tên tài khoản: Nguyễn Ngọc Hân"));
+        infoPanel.add(new JLabel("🏦 Số tài khoản: 0853030359"));
+        infoPanel.add(new JLabel("🏛 Ngân hàng: BIDV"));
+        infoPanel.add(new JLabel("💵 Số tiền: " + tongTien + " VND"));
+        infoPanel.add(new JLabel("📝 Nội dung: TSEDUVN280"));
+        infoPanel.add(new JLabel("<html><font color='red'>* Vui lòng chuyển đúng nội dung để được xác nhận!</font></html>"));
+        dialog.add(infoPanel, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(new Color(0xd6eaed));
+
+        JButton btnThanhToan = new JButton("Thanh toán");
+        btnThanhToan.setBackground(new Color(0x78a2a7));
+        btnThanhToan.setForeground(Color.WHITE);
+        btnThanhToan.addActionListener(e -> {
+            try (Connection conn = DBConnection.getConnection()) {
+                String ma = table.getValueAt(row, 0).toString();
+                String updateQuery = "";
+                if (table == tableThuoc) {
+                    updateQuery = "UPDATE DONTHUOC_DONTHUOCYC SET TRANGTHAITT = 'Đã thanh toán' WHERE MADT = ?";
+                } else if (table == tableHDKham) {
+                    updateQuery = "UPDATE HOADON_KHAMBENH SET TRANGTHAITT = 'Đã thanh toán' WHERE MAHDKB = ?";
+                }
+
+                if (!updateQuery.isEmpty()) {
+                    try (PreparedStatement pstmt = conn.prepareStatement(updateQuery)) {
+                        pstmt.setString(1, ma);
+                        int rows = pstmt.executeUpdate();
+                        if (rows > 0) {
+                            // === Ghi thông báo vào DB ===
+                            String ngayTao = java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 19);
+                            String noidung = "Hóa đơn " + ma + " đã được thanh toán thành công vào ngày " + ngayTao + ".";
+                            String userId = getUserIdFromBill(conn, ma, table);
+
+                            if (userId != null && !userId.isEmpty()) {
+                                String sqlTB = "INSERT INTO THONGBAO (MATB, USER_ID, NOIDUNG, LOAI) VALUES (?, ?, ?, ?)";
+                                try (PreparedStatement psTB = conn.prepareStatement(sqlTB)) {
+                                    psTB.setString(1, generateNotificationId(conn));
+                                    psTB.setString(2, userId);
+                                    psTB.setString(3, noidung);
+                                    psTB.setString(4, "Thanh toán");
+                                    psTB.executeUpdate();
+                                }
+                            }
+
+                            // === Gửi email ===
+                            String emailBenhNhan = getEmailFromBill(conn, ma, table);
+                            if (emailBenhNhan != null && !emailBenhNhan.isEmpty()) {
+                                String subject = "Xác nhận thanh toán hóa đơn";
+                                String body = "Chào bạn,\n\nHóa đơn của bạn với mã " + ma + " đã được thanh toán thành công vào ngày " + ngayTao + ".\n\n"
+                                        + "Cảm ơn bạn đã sử dụng dịch vụ!\n\n"
+                                        + "------------------------\n"
+                                        + "Bệnh viện tư Healink\n"
+                                        + "Địa chỉ: Khu phố 6, phường Linh Trung, Tp.Thủ Đức, Tp.Hồ Chí Minh\n"
+                                        + "Điện thoại: (0123) 456 789\n"
+                                        + "Email: contactBVTHealink@gmail.com\n"
+                                        + "Website: www.benhvientuHealink.vn\n"
+                                        + "Facebook: fb.com/benhvientuHealink";
+                                new EmailSender().sendEmail(emailBenhNhan, subject, body);
+                            }
+
+                            JOptionPane.showMessageDialog(this, "Thanh toán thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                            dialog.dispose();
+                            parentDialog.dispose();
+                            reloadPayBillPanel();
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, "Không xác định được loại hóa đơn để thanh toán.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Lỗi khi thanh toán!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        btnThanhToan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnThanhToan.setBackground(new Color(0xff9800));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnThanhToan.setBackground(new Color(0x78a2a7));
+            }
+        });
+
+        buttonPanel.add(btnThanhToan);
+
+        JButton btnDong = new JButton("Đóng");
+        btnDong.setBackground(new Color(0x2B4A59));
+        btnDong.setForeground(Color.WHITE);
+        btnDong.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(btnDong);
+
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.setVisible(true);
+    }
+
     private void showPaymentDialog(JTable table, int row, JDialog parentDialog) {
         String maHD = table.getValueAt(row, 0).toString();
 
         // Xác định cột tổng tiền tương ứng với từng bảng
-        String tongTien = "";
+        final String tongTien;
         if (table == tableThuoc) {
-            tongTien = table.getValueAt(row, 11).toString(); 
+            tongTien = table.getValueAt(row, 11).toString();
         } else if (table == tableHDKham) {
-            tongTien = table.getValueAt(row, 3).toString(); 
-        } else if (table == tableDieuTri) {
-            tongTien = table.getValueAt(row, 7).toString(); 
+            tongTien = table.getValueAt(row, 3).toString();
+        } else {
+            tongTien = "";
         }
 
         JDialog payDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Xác nhận thanh toán", true);
@@ -524,31 +591,78 @@ public class PayBill extends JFrame {
         btnHuy.setBackground(new Color(0xff9800));
 
         btnXacNhan.addActionListener(e -> {
-            try {
-                Connection conn = DBConnection.getConnection();
-                String ma = table.getValueAt(row, 0).toString();
+            String selectedMethod = cbPhuongThuc.getSelectedItem().toString();
 
+            // Nếu chọn chuyển khoản thì mở dialog chuyển khoản
+            if (selectedMethod.equals("Chuyển khoản")) {
+                showBankTransferDialog(tongTien, table, row, payDialog);
+                return;
+            }
+
+            try (Connection conn = DBConnection.getConnection()) {
                 String updateQuery = "";
                 if (table == tableThuoc) {
                     updateQuery = "UPDATE DONTHUOC_DONTHUOCYC SET TRANGTHAITT = 'Đã thanh toán' WHERE MADT = ?";
                 } else if (table == tableHDKham) {
                     updateQuery = "UPDATE HOADON_KHAMBENH SET TRANGTHAITT = 'Đã thanh toán' WHERE MAHDKB = ?";
-                } else if (table == tableDieuTri) {
-                    updateQuery = "UPDATE DIEUTRI SET TRANGTHAITT = 'Đã thanh toán' WHERE MADTR = ?";
+                } else {
+                    JOptionPane.showMessageDialog(this, "Bảng không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    return;
                 }
 
-                PreparedStatement pstmt = conn.prepareStatement(updateQuery);
-                pstmt.setString(1, ma);
-                int rows = pstmt.executeUpdate();
-                if (rows > 0) {
-                    JOptionPane.showMessageDialog(this, "Thanh toán thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                    payDialog.dispose();
-                    parentDialog.dispose();
-                    reloadPayBillPanel(); 
+                try (PreparedStatement pstmt = conn.prepareStatement(updateQuery)) {
+                    pstmt.setString(1, maHD);
+                    int rows = pstmt.executeUpdate();
+                    if (rows > 0) {
+                        // Thêm thông báo vào DB
+                        String ngayTao = java.time.LocalDateTime.now().toString().replace("T", " ").substring(0, 19);
+                        String noidung = "Hóa đơn " + maHD + " đã được thanh toán thành công vào ngày " + ngayTao + ".";
+
+                        // Giả sử bạn có userId tương ứng (ở đây lấy tạm từ email hoặc user login, bạn cần chỉnh lại)
+                        String userId = getUserIdFromBill(conn, maHD, table);
+
+                        String sqlTB = "INSERT INTO THONGBAO (MATB, USER_ID, NOIDUNG, LOAI) VALUES (?, ?, ?, ?)";
+                        try (PreparedStatement psTB = conn.prepareStatement(sqlTB)) {
+                            psTB.setString(1, generateNotificationId(conn));
+                            psTB.setString(2, userId);
+                            psTB.setString(3, noidung);
+                            psTB.setString(4, "Thanh toán");
+                            psTB.executeUpdate();
+                        }
+
+                        // Gửi email thông báo
+                        String emailBenhNhan = getEmailFromBill(conn, maHD, table);
+                        if (emailBenhNhan != null && !emailBenhNhan.isEmpty()) {
+                            String subject = "Xác nhận thanh toán hóa đơn";
+                            String body = "Chào bạn,\n\nHóa đơn của bạn với mã " + maHD + " đã được thanh toán thành công vào ngày " + ngayTao + ".\n\nCảm ơn bạn đã sử dụng dịch vụ!" +
+                                    "Trân trọng,\n\n------------------------\n" +
+                                    "Bệnh viện tư Healink\n" +
+                                    "Địa chỉ: Khu phố 6, phường Linh Trung, Tp.Thủ Đức, Tp.Hồ Chí Minh\n" +
+                                    "Điện thoại: (0123) 456 789\n" +
+                                    "Email: contactBVTHealink@gmail.com\n" +
+                                    "Website: www.benhvientuHealink.vn\n" +
+                                    "Facebook: fb.com/benhvientuHealink";
+
+                            try {
+                                new EmailSender().sendEmail(emailBenhNhan, subject, body);
+                                System.out.println("Đã gửi email xác nhận thanh toán cho: " + emailBenhNhan);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                                System.err.println("Không thể gửi email xác nhận thanh toán.");
+                            }
+                        }
+
+                        JOptionPane.showMessageDialog(this, "Thanh toán thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                        payDialog.dispose();
+                        parentDialog.dispose();
+                        reloadPayBillPanel();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Thanh toán thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Lỗi khi thanh toán!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Lỗi khi thanh toán: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -563,6 +677,104 @@ public class PayBill extends JFrame {
         payDialog.setVisible(true);
     }
 
+    // Giả sử bạn có hàm lấy email tùy bảng
+    private String getEmailFromBill(Connection conn, String maHD, JTable table) throws SQLException {
+        String email = null;
+        String sql = null;
+
+        if (table == tableThuoc) {
+            // Lấy email bệnh nhân từ bảng DONTHUOC_DONTHUOCYC và USERS
+            sql = "SELECT U.EMAIL FROM DONTHUOC_DONTHUOCYC D JOIN USERS U ON D.MABN = U.ID WHERE D.MADT = ?";
+        } else if (table == tableHDKham) {
+            sql = "SELECT U.EMAIL FROM HOADON_KHAMBENH HD JOIN KHAM K ON HD.MAKHAM = K.MAKHAM JOIN USERS U ON K.MABN = U.ID WHERE HD.MAHDKB = ?";
+        } else {
+            return null;
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maHD);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    email = rs.getString("EMAIL");
+                }
+            }
+        }
+        return email;
+    }
+
+    // Hàm lấy userId để gửi thông báo, bạn có thể lấy tương tự email
+    private String getUserIdFromBill(Connection conn, String maHD, JTable table) throws SQLException {
+        String userId = null;
+        String sql = null;
+
+        if (table == tableThuoc) {
+            sql = "SELECT MABN FROM DONTHUOC_DONTHUOCYC WHERE MADT = ?";
+        } else if (table == tableHDKham) {
+            sql = "SELECT K.MABN FROM HOADON_KHAMBENH HD JOIN KHAM K ON HD.MAKHAM = K.MAKHAM WHERE HD.MAHDKB = ?";
+        } else {
+            return null;
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, maHD);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    userId = rs.getString("MABN");
+                }
+            }
+        }
+        return userId;
+    }
+
+    private String getEmailFromBill(String maHD) {
+        String email = null;
+        try {
+            Connection conn = DBConnection.getConnection();
+            String query = "";
+
+            if (maHD.startsWith("DT")) {
+                // Đơn thuốc
+                query = "SELECT EMAIL FROM USERS WHERE ID = (SELECT MABN FROM DONTHUOC_DONTHUOCYC WHERE MADT = ?)";
+            } else if (maHD.startsWith("KB")) {
+                // Hóa đơn khám bệnh
+                query = "SELECT EMAIL FROM USERS WHERE ID = (SELECT K.MABN FROM HOADON_KHAMBENH H JOIN KHAM K ON H.MAKHAM = K.MAKHAM WHERE H.MAHDKB = ?)";
+            }
+
+            PreparedStatement ps = conn.prepareStatement(query);
+            ps.setString(1, maHD);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                email = rs.getString("EMAIL");
+            }
+
+            rs.close();
+            ps.close();
+            conn.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return email;
+    }
+    
+    private String generateNotificationId(Connection conn){
+         String prefix = "TB";
+        String sql = "SELECT MAX(MATB) FROM THONGBAO";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                String lastId = rs.getString(1);
+                if (lastId != null) {
+                    int num = Integer.parseInt(lastId.replace(prefix, ""));
+                    return prefix + String.format("%03d", num + 1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return prefix + "001"; // Nếu chưa có lịch hẹn nào
+    }
     
     private void reloadPayBillPanel() {
         try {
@@ -588,6 +800,40 @@ public class PayBill extends JFrame {
             }
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+    
+    private class EmailSender {
+        private final String fromEmail = "diep03062015@gmail.com";
+        private final String password = "elaz xcyx nqdo hsyl";
+
+        public void sendEmail(String toEmail, String subject, String messageText) {
+            Properties props = new Properties();
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.host", "smtp.gmail.com");
+            props.put("mail.smtp.port", "587");
+
+            Session session = Session.getInstance(props, new Authenticator() {
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(fromEmail, password);
+                }
+            });
+
+            try {
+                Message message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(fromEmail));
+                message.setRecipients(
+                    Message.RecipientType.TO, InternetAddress.parse(toEmail)
+                );
+                message.setSubject(subject);
+                message.setText(messageText);
+
+                Transport.send(message);
+                System.out.println("Email sent successfully to " + toEmail);
+            } catch (MessagingException e) {
+                e.printStackTrace();
+            }
         }
     }
 

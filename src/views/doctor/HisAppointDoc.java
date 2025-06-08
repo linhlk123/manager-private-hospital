@@ -4,8 +4,17 @@
  */
 package views.doctor;
 
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import java.awt.*;
 import java.awt.event.*;
+import java.security.Timestamp;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
@@ -20,6 +29,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -234,12 +244,9 @@ public class HisAppointDoc extends JFrame {
 
         gbc.gridx = 8; searchPanel.add(searchButton, gbc);
         gbc.gridx = 9; searchPanel.add(backButton, gbc);
-
-
-
+        
         content.add(searchPanel);
         content.add(Box.createVerticalStrut(20));
-
 
         try {
             // Lấy dữ liệu lịch hẹn theo trạng thái
@@ -258,7 +265,6 @@ public class HisAppointDoc extends JFrame {
         JScrollPane scrollPane = new JScrollPane(content);
         panel.add(scrollPane, BorderLayout.CENTER);
         
-
         return panel;
     }
     
@@ -333,18 +339,158 @@ public class HisAppointDoc extends JFrame {
         return panel;
     }
     
+    private void sendAppointmentStatusEmail(String patientEmail, String patientName, String appointmentId, String status) {
+        String subject = "Lịch hẹn đã **" + status + "**.\n" + appointmentId;
+        String messageText = "Kính chào " + patientName + ",\n\n"
+                + "Lịch hẹn của bạn (Mã: " + appointmentId + ") đã **" + status + "**.\n"
+                + "Vui lòng đăng nhập hệ thống để xem chi tiết.\n\n"
+                + "----------------------------\n"
+                + "Bệnh viện tư Healink\n"
+                + "Địa chỉ: Khu phố 6, phường Linh Trung, Tp.Thủ Đức, Tp.Hồ Chí Minh\n"
+                + "Điện thoại: (0123) 456 789\n"
+                + "Email: contactBVTHealink@gmail.com\n"
+                + "Website: www.benhvientuHealink.vn\n" 
+                + "Facebook: fb.com/benhvientuHealink\n\n" 
+                + "Trân trọng cảm ơn quý bệnh nhân đã tin tưởng và sử dụng dịch vụ của chúng tôi.";
+
+        try {
+            EmailSender sender = new EmailSender(); // tạo đối tượng
+            sender.sendEmail(patientEmail, subject, messageText); // gọi phương thức
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Không thể gửi email thông báo: " + ex.getMessage());
+        }
+    }
+    
+//    private void updateAppointmentStatus(String id, String newStatus) {
+//        String sql = "UPDATE LICHHEN SET TRANGTHAI = ? WHERE MALICH = ?";
+//        String infoQuery = "SELECT U.EMAIL, U.HOTENND FROM LICHHEN L " +
+//                           "JOIN USERS U ON L.MABN = U.ID WHERE L.MALICH = ?";
+//        try (Connection conn = DBConnection.getConnection();
+//             PreparedStatement psUpdate = conn.prepareStatement(sql);
+//             PreparedStatement psInfo = conn.prepareStatement(infoQuery)) {
+//
+//            // 1. Cập nhật trạng thái
+//            psUpdate.setString(1, newStatus);
+//            psUpdate.setString(2, id);
+//            psUpdate.executeUpdate();
+//
+//            // 2. Lấy thông tin bệnh nhân
+//            psInfo.setString(1, id);
+//            try (ResultSet rs = psInfo.executeQuery()) {
+//                if (rs.next()) {
+//                    String email = rs.getString("EMAIL");
+//                    String name = rs.getString("HOTENND");
+//
+//                    // 3. Gửi email thông báo
+//                    sendAppointmentStatusEmail(email, name, id, newStatus);
+//                }
+//            }
+//        } catch (SQLException | ClassNotFoundException e) {
+//            JOptionPane.showMessageDialog(this, "Lỗi cập nhật trạng thái: " + e.getMessage());
+//        }
+//    }
+    
     private void updateAppointmentStatus(String id, String newStatus) {
-        String sql = "UPDATE LICHHEN SET TRANGTHAI = ? WHERE MALICH = ?";
+        String sqlUpdate = "UPDATE LICHHEN SET TRANGTHAI = ? WHERE MALICH = ?";
+        String sqlInfo = "SELECT U.EMAIL, U.HOTENND, L.NGAYHEN FROM LICHHEN L " +
+                         "JOIN USERS U ON L.MABN = U.ID WHERE L.MALICH = ?";
+        String sqlNotify = "INSERT INTO THONGBAO (MATB, USER_ID, NOIDUNG, LOAI) VALUES (?, ?, ?, ?)";
+
         try (Connection conn = DBConnection.getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, newStatus);
-            ps.setString(2, id);
-            ps.executeUpdate();
+             PreparedStatement psUpdate = conn.prepareStatement(sqlUpdate);
+             PreparedStatement psInfo = conn.prepareStatement(sqlInfo)) {
+
+            // 1. Cập nhật trạng thái
+            psUpdate.setString(1, newStatus);
+            psUpdate.setString(2, id);
+            psUpdate.executeUpdate();
+
+            // 2. Lấy thông tin bệnh nhân và lịch hẹn
+            psInfo.setString(1, id);
+            try (ResultSet rs = psInfo.executeQuery()) {
+                if (rs.next()) {
+                    String email = rs.getString("EMAIL");
+                    String name = rs.getString("HOTENND");
+                    java.sql.Timestamp ngayHen = rs.getTimestamp("NGAYHEN");
+
+                    // 3. Thêm thông báo hệ thống
+                    String noidung = "Lịch hẹn vào ngày " + ngayHen.toLocalDateTime().toString().replace("T", " ") +
+                                     " của bạn đã được cập nhật trạng thái thành: " + newStatus;
+                    String notificationId = generateNotificationId(conn); // Hàm tự viết để tạo ID thông báo
+
+                    try (PreparedStatement psNotify = conn.prepareStatement(sqlNotify)) {
+                        psNotify.setString(1, notificationId);
+                        psNotify.setString(2, getPatientIdByAppointmentId(conn, id)); // lấy ID bệnh nhân từ MALICH
+                        psNotify.setString(3, noidung);
+                        psNotify.setString(4, "Lịch hẹn");
+                        psNotify.executeUpdate();
+                    }
+
+                    // 4. Gửi email nếu có
+                    if (email != null && !email.isEmpty()) {
+                        String subject = "Cập nhật trạng thái lịch hẹn khám bệnh";
+                        String message = "Xin chào " + name + ",\n\n" +
+                                         "Lịch hẹn của bạn vào lúc " + ngayHen.toLocalDateTime().toString().replace("T", " ") +
+                                         " đã được cập nhật trạng thái thành: " + newStatus + ".\n\n" +
+                                         "Nếu có thắc mắc, vui lòng liên hệ bệnh viện để được hỗ trợ.\n\n" +
+                                         "Trân trọng.\n\n------------------------\n" +
+                                         "Bệnh viện tư Healink\n" +
+                                         "Địa chỉ: Khu phố 6, phường Linh Trung, Tp.Thủ Đức, Tp.Hồ Chí Minh\n" +
+                                         "Điện thoại: (0123) 456 789\n" +
+                                         "Email: contactBVTHealink@gmail.com\n" +
+                                         "Website: www.benhvientuHealink.vn\n" +
+                                         "Facebook: fb.com/benhvientuHealink";
+
+                        try {
+                            new EmailSender().sendEmail(email, subject, message);
+                            System.out.println("Đã gửi email cập nhật trạng thái cho: " + email);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            System.err.println("Không thể gửi email.");
+                        }
+                    }
+                }
+            }
+
+            JOptionPane.showMessageDialog(this, "Cập nhật trạng thái thành công.");
         } catch (SQLException | ClassNotFoundException e) {
             JOptionPane.showMessageDialog(this, "Lỗi cập nhật trạng thái: " + e.getMessage());
         }
     }
-    
+
+    private String getPatientIdByAppointmentId(Connection conn, String appointmentId) throws SQLException {
+        String sql = "SELECT MABN FROM LICHHEN WHERE MALICH = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, appointmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("MABN");
+                }
+            }
+        }
+        return null;
+    }
+        
+    private String generateNotificationId(Connection conn){
+         String prefix = "TB";
+        String sql = "SELECT MAX(MATB) FROM THONGBAO";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                String lastId = rs.getString(1);
+                if (lastId != null) {
+                    int num = Integer.parseInt(lastId.replace(prefix, ""));
+                    return prefix + String.format("%03d", num + 1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return prefix + "001"; // Nếu chưa có lịch hẹn nào
+    }
+   
     private void reloadAppointmentPanels() {
         contentPanel.removeAll();
         JPanel newMain = createAppointmentMainPanel();
@@ -480,34 +626,6 @@ public class HisAppointDoc extends JFrame {
         //sectionTitle.setBorder(new EmptyBorder(10, 0, 10, 0));
         headerPanel.add(sectionTitle, BorderLayout.WEST);
         
-//        if (title.equals("Lịch hẹn chờ xác nhận")) {
-//            JButton btnDatLich = new JButton("Đặt lịch hẹn");
-//            btnDatLich.setBackground(new Color(0xff9800)); 
-//            btnDatLich.setForeground(Color.WHITE);
-//            btnDatLich.setFont(new Font("Arial", Font.BOLD, 20));
-//            btnDatLich.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-//            btnDatLich.setFocusPainted(false);
-//
-//            btnDatLich.addMouseListener(new MouseAdapter() {
-//                public void mouseEntered(MouseEvent e) {
-//                    btnDatLich.setBackground(new Color(0x588EA7)); 
-//                }
-//
-//                public void mouseExited(MouseEvent e) {
-//                    btnDatLich.setBackground(new Color(0xff9800));
-//                }
-//            });
-//
-//            btnDatLich.addActionListener(e -> {
-//                new AppointmentForm(doctorId).setVisible(true);
-//            });
-//
-//            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-//            buttonPanel.setOpaque(false);
-//            buttonPanel.add(btnDatLich);
-//            headerPanel.add(buttonPanel, BorderLayout.EAST);
-//        }
-        
         section.add(headerPanel, BorderLayout.NORTH);
 
         // Cột tương ứng với bảng LICHHEN
@@ -562,6 +680,40 @@ public class HisAppointDoc extends JFrame {
         section.add(scroll, BorderLayout.CENTER);
         return section;
        
+    }
+    
+    private class EmailSender {
+        private final String fromEmail = "diep03062015@gmail.com";
+        private final String password = "elaz xcyx nqdo hsyl";
+
+        public void sendEmail(String toEmail, String subject, String messageText) {
+            Properties props = new Properties();
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.host", "smtp.gmail.com");
+            props.put("mail.smtp.port", "587");
+
+            Session session = Session.getInstance(props, new Authenticator() {
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(fromEmail, password);
+                }
+            });
+
+            try {
+                Message message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(fromEmail));
+                message.setRecipients(
+                    Message.RecipientType.TO, InternetAddress.parse(toEmail)
+                );
+                message.setSubject(subject);
+                message.setText(messageText);
+
+                Transport.send(message);
+                System.out.println("Email sent successfully to " + toEmail);
+            } catch (MessagingException e) {
+                e.printStackTrace();
+            }
+        }
     }
     
     public static void main(String[] args) {

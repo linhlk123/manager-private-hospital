@@ -599,7 +599,13 @@ public class HistoryAppointment extends JFrame {
             });
 
             btnDatLich.addActionListener(e -> {
-                new AppointmentForm(patientId).setVisible(true);
+                try {
+                    new AppointmentForm(patientId).setVisible(true);
+                } catch (SQLException ex) {
+                    Logger.getLogger(HistoryAppointment.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (ClassNotFoundException ex) {
+                    Logger.getLogger(HistoryAppointment.class.getName()).log(Level.SEVERE, null, ex);
+                }
             });
 
             JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));

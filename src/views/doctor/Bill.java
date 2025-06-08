@@ -36,9 +36,8 @@ public class Bill extends JFrame {
     private JPanel contentPanel;
     private String doctorId;
     private CardLayout contentLayout;
-    private JLabel HDKBLabel, HDDTLabel;
+    private JLabel HDKBLabel;
     private JPanel khambenhPanel;
-    private JPanel dieutriPanel;
     
     public Bill(String doctorId) {
         this.doctorId = doctorId;
@@ -62,10 +61,8 @@ public class Bill extends JFrame {
         topMenu.setBackground(new Color(0xe8faf8));
 
         HDKBLabel = createMenuLabel("Hóa đơn khám bệnh");
-        HDDTLabel = createMenuLabel("Hóa đơn điều trị");
 
         topMenu.add(HDKBLabel);
-        topMenu.add(HDDTLabel);
 
         add(topMenu, BorderLayout.NORTH);
 
@@ -74,10 +71,8 @@ public class Bill extends JFrame {
         contentPanel = new JPanel(contentLayout);
 
         khambenhPanel = createHDKhamBenhPanel();
-        dieutriPanel = createHDKhamBenhPanel();
 
         contentPanel.add(khambenhPanel, "khambenh");
-        contentPanel.add(dieutriPanel, "dieutri");
 
         add(contentPanel, BorderLayout.CENTER);
 
@@ -97,7 +92,6 @@ public class Bill extends JFrame {
         resetMenuStyle();
         contentLayout.show(contentPanel, tabName);
         if (tabName.equals("khambenh")) highlightLabel(HDKBLabel);
-        else if (tabName.equals("dieutri")) highlightLabel(HDDTLabel);
     }
 
     private void highlightLabel(JLabel label) {
@@ -107,7 +101,7 @@ public class Bill extends JFrame {
     }
 
     private void resetMenuStyle() {
-        JLabel[] labels = {HDKBLabel, HDDTLabel};
+        JLabel[] labels = {HDKBLabel};
         for (JLabel label : labels) {
             label.setForeground(new Color(0x2B4A59));
             label.setFont(label.getFont().deriveFont(Font.PLAIN));
@@ -119,11 +113,6 @@ public class Bill extends JFrame {
         HDKBLabel.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 switchTab("khambenh");
-            }
-        });
-        HDDTLabel.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                switchTab("dieutri");
             }
         });
     }
@@ -357,13 +346,10 @@ public class Bill extends JFrame {
     
     private void reloadBillPanels() {
         contentPanel.remove(khambenhPanel);
-        contentPanel.remove(dieutriPanel);
 
         khambenhPanel = createHDKhamBenhPanel();
-        dieutriPanel = createHDKhamBenhPanel();
 
         contentPanel.add(khambenhPanel, "khambenh");
-        contentPanel.add(dieutriPanel, "dieutri");
 
         cardLayout.show(contentPanel, "khambenh");
         revalidate();
