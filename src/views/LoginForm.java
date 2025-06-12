@@ -14,6 +14,7 @@ import java.sql.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import views.doctor.DoctorDashboard;
+import views.pharmacist.PharmacistDashboard;
 
 
 public class LoginForm extends JFrame {
@@ -208,7 +209,8 @@ public class LoginForm extends JFrame {
                         new DoctorDashboard(String.valueOf(hoTen), userId).setVisible(true);
                     }
                     case "Dược sĩ" -> {
-                        // Gọi dashboard cho dược sĩ
+                        System.out.println("Opening interface of Pharmacist...");
+                        new views.pharmacist.PharmacistDashboard(userId, String.valueOf(hoTen)).setVisible(true);
                     }
                     case "Nhân viên" -> {
                         // Gọi dashboard cho nhân viên

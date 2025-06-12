@@ -607,7 +607,7 @@ public class Bill extends JFrame {
         DefaultTableModel model = new DefaultTableModel(data, columnNames) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Không cho chỉnh sửa bất kỳ ô nào
+                return false; 
             }
         };
 

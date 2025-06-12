@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package views.patient;
+package views.pharmacist;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -18,13 +18,16 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import utils.DBConnection;
 
-public class ProductView extends JFrame {
-    private JTable productTable;
-    private JTextField tfMaSP, tfTenSP, tfNhaPP, tfThanhPhan, tfNSX, tfHSD, tfDonGia, tfUuDai, tfMoTa;
+public class ServiceForm extends JFrame {
+    private String patientId;
+    private JTable serviceTable;
+    private JTextField tfMaDV, tfTenDV, tfUuDai,tfDonGia;
     private DefaultTableModel model;
 
-    public ProductView() throws SQLException, ClassNotFoundException {
-        setTitle("📄 Danh sách sản phẩm");
+    public ServiceForm(String patientId) throws SQLException, ClassNotFoundException {
+        this.patientId = patientId;
+        
+        setTitle("📄 Danh sách dịch vụ khám bệnh");
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         // Co theo kích thước màn hình (đề xuất)
@@ -32,12 +35,12 @@ public class ProductView extends JFrame {
         setSize(screenSize.width, screenSize.height); // full màn hình
      
         initComponents();
-        loadProducts();
+        loadService();
     }
     
     private JPanel createLabeledField(String labelText, JTextField textField, Font font, Color color) {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBackground(new Color(0x588EA7));
+        panel.setBackground(new Color(0xCDE8E5)); ///////////////
 
         JLabel label = new JLabel(labelText);
         label.setFont(font);
@@ -60,34 +63,30 @@ public class ProductView extends JFrame {
         
         // TITLE
         JPanel titlePanel = new JPanel(new BorderLayout());
-        JLabel title = new JLabel("DANH SÁCH SẢN PHẨM", JLabel.CENTER);
+        JLabel title = new JLabel("DANH SÁCH DỊCH VỤ KHÁM BỆNH", JLabel.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 40));
-        title.setForeground(new Color(0x588EA7));
-        title.setBackground(new Color(0xd6eaed));
+        title.setForeground(new Color(0x78a2a7));
+        title.setBackground(new Color(0xe8faf8));
         title.setOpaque(true);
         titlePanel.add(title, BorderLayout.CENTER);
 
         topPanel.add(titlePanel, BorderLayout.NORTH);
 
         // ===== SEARCH PANEL =====
-        JPanel searchPanel = new JPanel(new BorderLayout(10, 10));
-        searchPanel.setBackground(new Color(0x588EA7));
-        searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        JPanel searchPanel = new JPanel(new BorderLayout());
+        searchPanel.setBackground(new Color(0xCDE8E5));
+        searchPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // ========== TÊN SP & NÚT ==========
-        JPanel nameSearchPanel = new JPanel(new BorderLayout(10, 10));
-        nameSearchPanel.setBackground(new Color(0x588EA7));
-
-        JLabel lblTenSP = new JLabel("Nhập tên sản phẩm:");
-        lblTenSP.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblTenSP.setForeground(Color.WHITE);
-        tfTenSP = new JTextField();
-        tfTenSP.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        // ===== PANEL CHỨA NÚT Ở GIỮA =====
+        JPanel nameSearchPanel = new JPanel();
+        nameSearchPanel.setBackground(new Color(0xCDE8E5));
+        nameSearchPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 10));
 
         JButton btnSearch = new JButton("Tìm kiếm");
         btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btnSearch.setBackground(new Color(0x2B4A59));
+        btnSearch.setBackground(new Color(0x78a2a7));
         btnSearch.setForeground(Color.WHITE);
+        btnSearch.setPreferredSize(new Dimension(300, 30));
 
         // Hover effect
         btnSearch.addMouseListener(new MouseAdapter() {
@@ -98,129 +97,97 @@ public class ProductView extends JFrame {
 
             @Override
             public void mouseExited(MouseEvent e) {
-                btnSearch.setBackground(new Color(0x2B4A59));
+                btnSearch.setBackground(new Color(0x78a2a7));
             }
         });
 
-        nameSearchPanel.add(lblTenSP, BorderLayout.WEST);
-        nameSearchPanel.add(tfTenSP, BorderLayout.CENTER);
-        nameSearchPanel.add(btnSearch, BorderLayout.EAST);
+        nameSearchPanel.add(btnSearch);
         
         searchPanel.add(nameSearchPanel, BorderLayout.NORTH);
-
+        
         // ========== CÁC THÀNH PHẦN KHÁC ==========
-        JPanel searchFieldsPanel = new JPanel(new GridLayout(2, 4, 15, 15));
-        searchFieldsPanel.setBackground(new Color(0x588EA7));
+        JPanel searchFieldsPanel = new JPanel(new GridLayout(1, 4, 15, 15));
+        searchFieldsPanel.setBackground(new Color(0xCDE8E5));
 
-        tfMaSP = new JTextField();
-        tfNhaPP = new JTextField();
-        tfThanhPhan = new JTextField();
-        tfNSX = new JTextField();
-        tfHSD = new JTextField();
-        tfDonGia = new JTextField();
+        tfMaDV = new JTextField();
+        tfTenDV = new JTextField();
         tfUuDai = new JTextField();
-        tfMoTa = new JTextField();
-
+        tfDonGia = new JTextField();
+        
         Font labelFont = new Font("Segoe UI", Font.BOLD, 14);
-        Color labelColor = Color.WHITE;
+        Color labelColor = Color.BLACK;
 
-        searchFieldsPanel.add(createLabeledField("Mã sản phẩm:", tfMaSP, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("Nhà phân phối:", tfNhaPP, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("Thành phần:", tfThanhPhan, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("NSX:", tfNSX, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("HSD:", tfHSD, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("Đơn giá:", tfDonGia, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("Ưu đãi:", tfUuDai, labelFont, labelColor));
-        searchFieldsPanel.add(createLabeledField("Mô tả:", tfMoTa, labelFont, labelColor));
+        searchFieldsPanel.add(createLabeledField("Mã dịch vụ khám:", tfMaDV, labelFont, labelColor));
+        searchFieldsPanel.add(createLabeledField("Tên dịch vụ khám:", tfTenDV, labelFont, labelColor));
+        searchFieldsPanel.add(createLabeledField("Ưu đãi dịch vụ:", tfUuDai, labelFont, labelColor));
+        searchFieldsPanel.add(createLabeledField("Đơn giá dịch vụ:", tfDonGia, labelFont, labelColor));
 
         searchPanel.add(searchFieldsPanel, BorderLayout.CENTER);
         topPanel.add(searchPanel, BorderLayout.CENTER);
         add(topPanel, BorderLayout.NORTH); 
 
-        // ===== TABLE: DANH SÁCH SẢN PHẨM =====
-        String[] columns = {
-            "Mã sản phẩm", "Tên sản phẩm", "Nhà phân phối", "ĐVT", "Thành phần", "Lưu ý",
-            "Cách dùng", "Bảo quản", "NSX", "HSD", "Đơn giá", "Ưu đãi", "Mô tả"
-        };
+        // ===== TABLE: DANH SÁCH DỊCH VỤ =====
+        String[] columns = {"Mã dịch vụ khám", "Tên dịch vụ khám", "Mô tả dịch vụ khám", "Ưu đãi dịch vụ", "Đơn giá dịch vụ"};
         model = new DefaultTableModel(columns, 0);
-        productTable = new JTable(model);
-        productTable.setRowHeight(28); //chiều cao mỗi hàng 
-        productTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        productTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        productTable.getTableHeader().setBackground(new Color(0x588EA7));
-        productTable.getTableHeader().setForeground(Color.WHITE);
+        serviceTable = new JTable(model);
+        serviceTable.setRowHeight(28); //chiều cao mỗi hàng 
+        serviceTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        serviceTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        serviceTable.getTableHeader().setBackground(new Color(0xCDE8E5));
+        serviceTable.getTableHeader().setForeground(Color.BLACK);
 
-        JScrollPane scrollPane = new JScrollPane(productTable);
+        JScrollPane scrollPane = new JScrollPane(serviceTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setBackground(new Color(0xD9EEF2));
-        scrollPane.setBorder(new LineBorder(new Color(0x588EA7)));
+        scrollPane.setBorder(new LineBorder(new Color(222, 246, 186)));
         
         add(scrollPane, BorderLayout.CENTER);
 
         // ===== SỰ KIỆN TÌM KIẾM =====
         btnSearch.addActionListener(e -> {
             try {
-                loadProducts(); // Gọi đúng hàm đang dùng tất cả các JTextField để lọc
+                loadService(); // Gọi đúng hàm đang dùng tất cả các JTextField để lọc
             } catch (SQLException | ClassNotFoundException ex) {
-                Logger.getLogger(ProductView.class.getName()).log(Level.SEVERE, null, ex);
-                JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm sản phẩm.");
+                Logger.getLogger(ServiceForm.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm dịch vụ.");
             }
         });
 
 
         // ===== CLICK XEM CHI TIẾT =====
-        productTable.addMouseListener(new MouseAdapter() {
+        serviceTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                int selectedRow = productTable.getSelectedRow();
+                int selectedRow = serviceTable.getSelectedRow();
                 if (selectedRow != -1) {
-                    showProductDetails(selectedRow);
+                    showServiceDetails(selectedRow);
                 }
             }
         });
     }
 
-    private void loadProducts() throws SQLException, ClassNotFoundException {
+    private void loadService() throws SQLException, ClassNotFoundException {
         model.setRowCount(0);
-        StringBuilder sql = new StringBuilder("SELECT * FROM SANPHAM WHERE 1=1");
+        StringBuilder sql = new StringBuilder("SELECT * FROM DICHVUKHAM WHERE 1=1");
         java.util.List<Object> params = new java.util.ArrayList<>();
 
-        if (!tfMaSP.getText().trim().isEmpty()) {
-            sql.append(" AND UPPER(MASP) LIKE ?");
-            params.add("%" + tfMaSP.getText().trim().toUpperCase() + "%");
+        
+        if (!tfMaDV.getText().trim().isEmpty()) {
+            sql.append(" AND UPPER(MADV) LIKE ?");
+            params.add("%" + tfMaDV.getText().trim().toUpperCase() + "%");
         }
-        if (!tfTenSP.getText().trim().isEmpty()) {
-            sql.append(" AND UPPER(TENSP) LIKE ?");
-            params.add("%" + tfTenSP.getText().trim().toUpperCase() + "%");
-        }
-        if (!tfNhaPP.getText().trim().isEmpty()) {
-            sql.append(" AND UPPER(TENNPP) LIKE ?");
-            params.add("%" + tfNhaPP.getText().trim().toUpperCase() + "%");
-        }
-        if (!tfThanhPhan.getText().trim().isEmpty()) {
-            sql.append(" AND UPPER(THANHPHAN) LIKE ?");
-            params.add("%" + tfThanhPhan.getText().trim().toUpperCase() + "%");
-        }
-        if (!tfMoTa.getText().trim().isEmpty()) {
-            sql.append(" AND UPPER(MOTA) LIKE ?");
-            params.add("%" + tfMoTa.getText().trim().toUpperCase() + "%");
-        }
-        if (!tfDonGia.getText().trim().isEmpty()) {
-            sql.append(" AND DONGIA = ?");
-            params.add(Double.parseDouble(tfDonGia.getText().trim()));
+        if (!tfTenDV.getText().trim().isEmpty()) {
+            sql.append(" AND UPPER(TENDV) LIKE ?");
+            params.add("%" + tfTenDV.getText().trim().toUpperCase() + "%");
         }
         if (!tfUuDai.getText().trim().isEmpty()) {
-            sql.append(" AND UUDAI = ?");
-            params.add(Integer.parseInt(tfUuDai.getText().trim()));
+            sql.append(" AND UPPER(UUDAI) LIKE ?");
+            params.add("%" + tfUuDai.getText().trim().toUpperCase() + "%");
         }
-        if (!tfNSX.getText().trim().isEmpty()) {
-            sql.append(" AND TO_CHAR(NSX, 'YYYY-MM-DD') = ?");
-            params.add(tfNSX.getText().trim());
-        }
-        if (!tfHSD.getText().trim().isEmpty()) {
-            sql.append(" AND TO_CHAR(HSD, 'YYYY-MM-DD') = ?");
-            params.add(tfHSD.getText().trim());
+        if (!tfDonGia.getText().trim().isEmpty()) {
+            sql.append(" AND UPPER(DONGIA) LIKE ?");
+            params.add("%" + tfDonGia.getText().trim().toUpperCase() + "%");
         }
 
         try (Connection conn = DBConnection.getConnection();
@@ -234,19 +201,11 @@ public class ProductView extends JFrame {
 
             while (rs.next()) {
                 model.addRow(new Object[]{
-                    rs.getString("MASP"),
-                    rs.getString("TENSP"),
-                    rs.getString("TENNPP"),
-                    rs.getString("DVT"),
-                    rs.getString("THANHPHAN"),
-                    rs.getString("LUUY"),
-                    rs.getString("CACHDUNG"),
-                    rs.getString("BAOQUAN"),
-                    rs.getDate("NSX"),
-                    rs.getDate("HSD"),
-                    rs.getDouble("DONGIA"),
-                    rs.getInt("UUDAI"),
-                    rs.getString("MOTA")
+                    rs.getString("MADV"),
+                    rs.getString("TENDV"),
+                    rs.getString("MOTADV"),
+                    rs.getString("UUDAI"),
+                    rs.getString("DONGIA"),
                 });
             }
 
@@ -256,8 +215,8 @@ public class ProductView extends JFrame {
     }
 
     
-    private void showProductDetails(int row) {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi tiết sản phẩm", true);
+    private void showServiceDetails(int row) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi tiết dịch vụ", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
         JPanel contentPanel = new JPanel();
@@ -320,16 +279,15 @@ public class ProductView extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            try {
-                new ProductView().setVisible(true);
+            try {   
+                new ServiceForm("U002").setVisible(true);
             } catch (SQLException ex) {
-                Logger.getLogger(ProductView.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(ServiceForm.class.getName()).log(Level.SEVERE, null, ex);
             } catch (ClassNotFoundException ex) {
-                Logger.getLogger(ProductView.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(ServiceForm.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
     }
 }
-
 
 
