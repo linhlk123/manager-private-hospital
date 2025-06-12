@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package views.pharmacist;
 
 import utils.DBConnection;
@@ -14,6 +10,8 @@ import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.sql.*;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 import javax.swing.table.TableCellRenderer;
 import utils.MailSender;
@@ -156,12 +154,24 @@ public class HisMedSell extends JFrame {
         btnUpdate.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnUpdate.addActionListener(e -> openUpdateDialog());
 
+        JButton btnAddPrescription = new JButton("Thêm đơn thuốc");
+        btnAddPrescription.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnAddPrescription.setBackground(new Color(0, 153, 76));
+        btnAddPrescription.setForeground(Color.WHITE);
+        btnAddPrescription.setFocusPainted(false);
+        btnAddPrescription.setBorderPainted(false);
+        btnAddPrescription.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAddPrescription.addActionListener(e -> openAddPrescriptionDialog());
+
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottomPanel.setBorder(new EmptyBorder(10, 0, 20, 0));
         bottomPanel.add(btnUpdate);
+        bottomPanel.add(btnAddPrescription); // Thêm nút mới
 
         add(scrollPane, BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
+        
+
 
         // Add search functionality
         btnSearch.addActionListener(e -> searchPatient());
@@ -567,5 +577,158 @@ private void sendEmailProcess(int row) {
         } catch (Exception e) { e.printStackTrace(); }
         return null;
     }
+private String getNextMADT() {
+    try (Connection conn = DBConnection.getConnection()) {
+        String sql = "SELECT MAX(MADT) FROM DONTHUOC_DONTHUOCYC";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                String maxMADT = rs.getString(1);
+                if (maxMADT == null) return "1";
+                // Nếu MADT là số
+                try {
+                    int next = Integer.parseInt(maxMADT) + 1;
+                    return String.valueOf(next);
+                } catch (NumberFormatException e) {
+                    // Nếu MADT có tiền tố, ví dụ: DT001, DT002...
+                    String number = maxMADT.replaceAll("\\D+", "");
+                    int next = Integer.parseInt(number) + 1;
+                    return "DT" + String.format("%03d", next);
+                }
+            }
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+    return "1";
 }
 
+
+private void openAddPrescriptionDialog() {
+    JTextField tfMADT = new JTextField(getNextMADT(), 15);
+    tfMADT.setEditable(false);
+    JComboBox<String> cbMABS = createDoctorComboBox();
+    JTextField tfGioiTinh = new JTextField(5);
+    JTextField tfNgaySinh = new JTextField(10);
+    JTextField tfLichSuBenhLy = new JTextField(30);
+    JComboBox<String> cbMABN = createPatientComboBox(tfGioiTinh, tfNgaySinh, tfLichSuBenhLy);
+    JTextField tfDiUng = new JTextField(30);
+    JTextField tfGhiChu = new JTextField(30);
+    JTextField tfNgayBan = new JTextField(10);
+    JTextField tfThanhTien = new JTextField(10);
+
+    String[] trangThaiArr = {"Chưa thanh toán", "Đã thanh toán"};
+    JComboBox<String> cbTrangThai = new JComboBox<>(trangThaiArr);
+
+    JPanel panel = new JPanel(new GridLayout(0,2,10,10));
+    panel.add(new JLabel("Mã đơn thuốc:")); panel.add(tfMADT);
+    panel.add(new JLabel("Mã bác sĩ:")); panel.add(cbMABS);
+    panel.add(new JLabel("Bệnh nhân:")); panel.add(cbMABN);
+    panel.add(new JLabel("Giới tính:")); panel.add(tfGioiTinh);
+    panel.add(new JLabel("Ngày sinh (yyyy-MM-dd):")); panel.add(tfNgaySinh);
+    panel.add(new JLabel("Lịch sử bệnh lý:")); panel.add(tfLichSuBenhLy);
+    panel.add(new JLabel("Dị ứng:")); panel.add(tfDiUng);
+    panel.add(new JLabel("Ghi chú:")); panel.add(tfGhiChu);
+    panel.add(new JLabel("Ngày bán (yyyy-MM-dd):")); panel.add(tfNgayBan);
+    panel.add(new JLabel("Thành tiền:")); panel.add(tfThanhTien);
+    panel.add(new JLabel("Trạng thái:")); panel.add(cbTrangThai);
+
+    int res = JOptionPane.showConfirmDialog(this, panel, "Thêm đơn thuốc mới", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+    if (res == JOptionPane.OK_OPTION) {
+        try (Connection conn = DBConnection.getConnection()) {
+            String sql = "INSERT INTO DONTHUOC_DONTHUOCYC (MADT, MADS, MABS, MABN, GIOITINHBN, NGAYSINHBN, LICHSU_BENHLY_BN, DIUNGBN, GHICHU, NGAYBAN, THANHTIEN, TRANGTHAITT) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, tfMADT.getText().trim());
+                ps.setString(2, mads); // Tự động lấy mã dược sĩ đăng nhập
+                String selectedDoctor = (String) cbMABS.getSelectedItem();
+                String mabs = selectedDoctor.split(" - ")[0]; // Lấy MABS
+                ps.setString(3, mabs);
+                String selectedPatient = (String) cbMABN.getSelectedItem();
+                String mabn = selectedPatient.split(" - ")[0]; // Lấy MABN
+                ps.setString(4, mabn);
+                ps.setString(5, tfGioiTinh.getText().trim());
+                if (tfNgaySinh.getText().trim().isEmpty()) ps.setNull(6, Types.DATE);
+                else ps.setDate(6, java.sql.Date.valueOf(tfNgaySinh.getText().trim()));
+                ps.setString(7, tfLichSuBenhLy.getText().trim());
+                ps.setString(8, tfDiUng.getText().trim());
+                ps.setString(9, tfGhiChu.getText().trim());
+                if (tfNgayBan.getText().trim().isEmpty()) ps.setNull(10, Types.DATE);
+                else ps.setDate(10, java.sql.Date.valueOf(tfNgayBan.getText().trim()));
+                if (tfThanhTien.getText().trim().isEmpty()) ps.setNull(11, Types.NUMERIC);
+                else ps.setDouble(11, Double.parseDouble(tfThanhTien.getText().trim()));
+                ps.setString(12, cbTrangThai.getSelectedItem().toString());
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Thêm đơn thuốc thành công!");
+                loadData();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi khi thêm đơn thuốc: " + ex.getMessage());
+        }
+    }
+}
+
+class PatientInfo {
+    String mabn, hoten, sobhyt, gioitinh, ngaysinh, lichsu;
+    PatientInfo(String mabn, String hoten, String sobhyt, String gioitinh, String ngaysinh, String lichsu) {
+        this.mabn = mabn; this.hoten = hoten; this.sobhyt = sobhyt;
+        this.gioitinh = gioitinh; this.ngaysinh = ngaysinh; this.lichsu = lichsu;
+    }
+}
+private JComboBox<String> createDoctorComboBox() {
+    JComboBox<String> cb = new JComboBox<>();
+    try (Connection conn = DBConnection.getConnection()) {
+        String sql = "SELECT B.MABS, U.HOTENND, B.CHUYENKHOA " +
+                     "FROM BACSI B JOIN USERS U ON B.MABS = U.ID";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String mabs = rs.getString("MABS");
+                String hoten = rs.getString("HOTENND");
+                String chuyenKhoa = rs.getString("CHUYENKHOA");
+                cb.addItem(mabs + " - " + hoten + " - " + chuyenKhoa);
+            }
+        }
+    } catch (Exception ex) {
+        ex.printStackTrace();
+    }
+    return cb;
+}
+// 2. Sửa hàm tạo comboBox
+private Map<String, PatientInfo> patientMap = new HashMap<>();
+private JComboBox<String> createPatientComboBox(JTextField tfGioiTinh, JTextField tfNgaySinh, JTextField tfLichSu) {
+    JComboBox<String> cb = new JComboBox<>();
+    try (Connection conn = DBConnection.getConnection()) {
+        String sql = "SELECT B.MABN, U.HOTENND, B.SOBHYT, U.GIOITINH, U.NGAYSINH, B.LICHSU_BENHLY " +
+                     "FROM BENHNHAN B JOIN USERS U ON B.MABN = U.ID";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String mabn = rs.getString("MABN");
+                String hoten = rs.getString("HOTENND");
+                String sobhyt = rs.getString("SOBHYT");
+                String gioitinh = rs.getString("GIOITINH");
+                Date ngaysinh = rs.getDate("NGAYSINH");
+                String lichsu = rs.getString("LICHSU_BENHLY");
+                String ngaysinhStr = (ngaysinh != null) ? ngaysinh.toString() : "";
+                String display = mabn + " - " + hoten + " - " + sobhyt;
+                cb.addItem(display);
+                patientMap.put(display, new PatientInfo(mabn, hoten, sobhyt, gioitinh, ngaysinhStr, lichsu));
+            }
+        }
+    } catch (Exception ex) {
+        ex.printStackTrace();
+    }
+   // 3. Thêm sự kiện chọn để tự động set các trường
+    cb.addActionListener(e -> {
+        String selected = (String) cb.getSelectedItem();
+        PatientInfo info = patientMap.get(selected);
+        if (info != null) {
+            tfGioiTinh.setText(info.gioitinh != null ? info.gioitinh : "");
+            tfNgaySinh.setText(info.ngaysinh != null ? info.ngaysinh : "");
+            tfLichSu.setText(info.lichsu != null ? info.lichsu : "");
+        }
+    });
+
+    return cb;
+}
+}
