@@ -265,7 +265,7 @@ public class PayBill extends JFrame {
             "Dị ứng bệnh nhân", "File Đơn Thuốc", "Ghi chú", "Ngày bán", "Thành tiền", "Trạng thái thanh toán"
         });
 
-        tableThuoc.getColumnModel().getColumn(12).setCellRenderer(new StatusCellRenderer());
+        tableThuoc.getColumnModel().getColumn(12).setCellRenderer(new BillStatusCellRenderer());
 
         String sql = "SELECT MADT, MADS, MABS, MABN, GIOITINHBN, NGAYSINHBN, LICHSU_BENHLY_BN, DIUNGBN, "
                    + "FILEDONTHUOC, GHICHU, NGAYBAN, THANHTIEN, TRANGTHAITT "
@@ -313,7 +313,7 @@ public class PayBill extends JFrame {
             "Phương thức thanh toán", "Ghi chú", "Trạng thái thanh toán"
         });
         
-        tableHDKham.getColumnModel().getColumn(6).setCellRenderer(new StatusCellRenderer());
+        tableHDKham.getColumnModel().getColumn(6).setCellRenderer(new BillStatusCellRenderer());
 
         String sql = "SELECT * FROM HOADON_KHAMBENH H JOIN KHAM K ON H.MAKHAM = K.MAKHAM WHERE K.MABN = ?";
 
@@ -852,7 +852,7 @@ public class PayBill extends JFrame {
 
 
 // Renderer tùy chỉnh để đổi màu văn bản trong cột "Trạng thái thanh toán"
-class StatusCellRenderer extends DefaultTableCellRenderer {
+class BillStatusCellRenderer extends DefaultTableCellRenderer {
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value,
             boolean isSelected, boolean hasFocus, int row, int column) {

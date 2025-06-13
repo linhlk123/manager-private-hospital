@@ -303,7 +303,7 @@ public class StaffDashboard extends JFrame {
         SwingUtilities.invokeLater(() -> {
             try {
                 // Giả định thông tin nhân viên (bạn có thể thay bằng thông tin thực tế)
-                String hoTenNhanVien = "Admin";
+                String hoTenNhanVien = "Nguyễn Trọng Phú";
                 String maNhanVien = "U014";
 
                 StaffDashboard dashboard = new StaffDashboard(hoTenNhanVien, maNhanVien);

@@ -15,6 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import views.doctor.DoctorDashboard;
 import views.pharmacist.PharmacistDashboard;
+import views.staff.StaffDashboard;
 
 
 public class LoginForm extends JFrame {
@@ -213,7 +214,8 @@ public class LoginForm extends JFrame {
                         new views.pharmacist.PharmacistDashboard(userId, String.valueOf(hoTen)).setVisible(true);
                     }
                     case "Nhân viên" -> {
-                        // Gọi dashboard cho nhân viên
+                        System.out.println("Opening interface of Doctor...");
+                        new StaffDashboard(String.valueOf(hoTen), userId).setVisible(true);
                     }
                     default -> {
                         JOptionPane.showMessageDialog(this, "Chưa hỗ trợ giao diện cho vai trò: " + role);

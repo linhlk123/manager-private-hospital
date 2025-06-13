@@ -132,8 +132,9 @@ public class Prescription extends JFrame {
         add(topPanel, BorderLayout.NORTH); 
 
         // ===== TABLE: DANH SÁCH ĐƠN THUỐC =====
-        String[] columns = {"Mã đơn thuốc", "Mã dược sĩ", "Mã bác sĩ", "Mã bệnh nhân", "Giới tính bệnh nhân", "Lịch sử bệnh lý bệnh nhân", 
-                            "Dị ứng bệnh nhân", "File Đơn Thuốc", "Ghi chú", "Ngày bán", "Thành tiền", "Trạng thái thanh toán"};
+        String[] columns = {"Mã đơn thuốc", "Mã dược sĩ", "Mã bác sĩ", "Mã bệnh nhân", "Giới tính bệnh nhân", "Ngày sinh bệnh nhân",
+                            "Lịch sử bệnh lý bệnh nhân", "Dị ứng bệnh nhân", "File Đơn Thuốc", "Ghi chú", "Ngày bán", "Thành tiền", 
+                            "Trạng thái thanh toán"};
         
         model = new DefaultTableModel(columns, 0);
         prescriptionTable = new JTable(model);
@@ -142,7 +143,7 @@ public class Prescription extends JFrame {
         prescriptionTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         prescriptionTable.getTableHeader().setBackground(new Color(0xCDE8E5));
         prescriptionTable.getTableHeader().setForeground(Color.BLACK);
-        prescriptionTable.getColumnModel().getColumn(9).setCellRenderer(new StatusCellRenderer());
+        prescriptionTable.getColumnModel().getColumn(9).setCellRenderer(new BillStatusCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(prescriptionTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
