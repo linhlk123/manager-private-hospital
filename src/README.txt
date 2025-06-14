@@ -3,7 +3,7 @@
 
 ## 🔗 Link GitHub
 
-👉 https://github.com/23520432/Manager-Private-Hospital.git
+👉 https://github.com/linhlk123/manager-private-hospital
 
 ---
 
@@ -67,3 +67,6 @@ jcalendar-1.4.jar
 ### 4. Build & chạy ứng dụng
 -Đăng ký một số tài khoản
 -Chạy các dữ liệu của các bảng trong database
+
+
+
